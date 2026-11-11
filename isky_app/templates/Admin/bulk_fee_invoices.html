@@ -1,0 +1,738 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Bulk Fee Invoices{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Bulk Fee Invoices</span>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Bulk Fee Invoices</h1>
+    <div class="college-line">Generate mess fees, management fees, or any ad-hoc charge for hostellers, selected departments, or specific students at once</div>
+  </div>
+</div>
+
+<div id="form-alert" class="form-alert" style="display:none;"></div>
+
+<form id="bulk-form" autocomplete="off">
+  <input type="hidden" id="bf-college" value="{{ college }}">
+
+  <!-- INVOICE DETAILS -->
+  <section class="panel">
+    <div class="panel-head"><h2>Invoice Details</h2></div>
+    <div class="panel-body">
+      <div class="form-grid-2">
+
+        <div class="field">
+          <label for="bf-category">Fee Category</label>
+          <div class="input-shell" style="background: var(--cream, #f7f4ee); cursor: not-allowed;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <input type="text" value="{{ others_category.name|default:'Others' }}" disabled style="background: transparent;">
+          </div>
+          <!-- Locked to "Others" — always sent as the fee category, no picker. -->
+          <input type="hidden" id="bf-category" value="{{ others_category.id }}">
+        </div>
+
+        <div class="field">
+          <label for="bf-title">Title</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+            <input type="text" id="bf-title" placeholder="e.g. Mess Fee — November 2026" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="bf-amount">Amount per Student (₹)</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 8h12M6 13h5a4 4 0 0 0 4-4V8M6 13l8 8" /></svg>
+            <input type="number" id="bf-amount" min="0.01" step="0.01" placeholder="0.00" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="bf-academic-year">Academic Year</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            <input type="text" id="bf-academic-year" placeholder="e.g. 2025-2026" pattern="\d{4}-\d{4}" required>
+          </div>
+          <p class="field-hint">Format YYYY-YYYY.</p>
+        </div>
+
+        <div class="field">
+          <label for="bf-semester">Semester (optional)</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            <select id="bf-semester">
+              <option value="">Not applicable</option>
+              <option value="1">1st Semester</option>
+              <option value="2">2nd Semester</option>
+              <option value="3">3rd Semester</option>
+              <option value="4">4th Semester</option>
+              <option value="5">5th Semester</option>
+              <option value="6">6th Semester</option>
+              <option value="7">7th Semester</option>
+              <option value="8">8th Semester</option>
+            </select>
+          </div>
+          <p class="field-hint">Attach this charge to a semester for record-keeping — e.g. mess fee billed per semester.</p>
+        </div>
+
+        <div class="field">
+          <label for="bf-due-date">Due Date</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+            <input type="date" id="bf-due-date" required>
+          </div>
+        </div>
+
+        <div class="field col-span-2">
+          <label for="bf-remarks">Remarks (optional)</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <input type="text" id="bf-remarks" placeholder="Any note to keep with this batch">
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- TARGET AUDIENCE -->
+  <!-- panel-overflow lets the student search dropdown escape this card and float above everything below -->
+  <section class="panel panel-overflow" style="margin-top: 20px;">
+    <div class="panel-head"><h2>Who Is This For?</h2></div>
+    <div class="panel-body">
+
+      <div class="field" style="margin-bottom: 18px;">
+        <label>Target</label>
+        <div class="segmented" id="target-segmented">
+          <input type="radio" id="target-all" name="target_type" value="all" checked>
+          <label for="target-all">All Students</label>
+          <input type="radio" id="target-department" name="target_type" value="department">
+          <label for="target-department">Departments</label>
+          <input type="radio" id="target-hostellers" name="target_type" value="hostellers">
+          <label for="target-hostellers">Hostellers</label>
+          <input type="radio" id="target-manual" name="target_type" value="manual">
+          <label for="target-manual">Specific Students</label>
+        </div>
+      </div>
+
+      <!-- Department sub-panel -->
+      <div class="form-section-title" id="dept-title" style="display:none;">Departments</div>
+      <div id="panel-department" style="display:none;">
+        <div class="form-grid-2" id="dept-checklist">
+          {% for dept in departments %}
+          <div class="field" style="margin-bottom: 4px;">
+            <label style="display:flex; align-items:center; gap: 9px; font-size: 13px; font-weight: 600; color: var(--ink-900); text-transform:none; letter-spacing:normal; cursor:pointer;">
+              <input type="checkbox" class="dept-check" value="{{ dept.id }}" style="width:16px; height:16px; accent-color: var(--primary);">
+              {{ dept.name }} ({{ dept.short_name }})
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Extra filters (year / hostellers) — hidden for manual target -->
+      <div class="form-section-title" id="extra-title">Optional Filters</div>
+      <div class="form-grid-2" id="panel-extra-filters">
+        <div class="field">
+          <label for="bf-year-filter">Restrict to Year</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/></svg>
+            <select id="bf-year-filter">
+              <option value="">Any year</option>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">4th Year</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <label style="display:flex; align-items:center; gap: 9px; font-size: 13px; font-weight: 600; color: var(--ink-900); cursor:pointer; padding: 12px 14px; background:#fff; border:1.5px solid var(--line); border-radius:12px;">
+            <input type="checkbox" id="bf-hostellers-only" style="width:16px; height:16px; accent-color: var(--primary);">
+            Hostellers only within this selection
+          </label>
+        </div>
+      </div>
+
+      <!-- Manual sub-panel -->
+      <div class="form-section-title" id="manual-title" style="display:none;">Search &amp; Add Students</div>
+      <div id="panel-manual" style="display:none;">
+        <div class="field" style="position: relative;">
+          <label for="student-search-input">Search Students</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="student-search-input" placeholder="Search by name, admission or roll number…" autocomplete="off">
+            <span class="search-spinner" id="search-spinner" aria-hidden="true"></span>
+          </div>
+          <div class="student-search-results" id="student-search-results"></div>
+        </div>
+        <div class="selected-chips" id="selected-chips"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="form-actions" style="margin-top: 24px; justify-content: flex-start;">
+    <button type="button" id="preview-btn" class="btn-ghost">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+      Preview Matching Students
+    </button>
+    <button type="submit" class="btn-primary" id="submit-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Generate Invoices
+    </button>
+  </div>
+</form>
+
+<!-- PREVIEW RESULTS -->
+<div class="preview-summary" id="preview-summary" style="display:none;">
+  <div><div class="num" id="preview-count">0</div><div class="lbl">Students Matched</div></div>
+  <div><div class="num" id="preview-total">₹0</div><div class="lbl">Total Amount</div></div>
+</div>
+
+<section class="panel" id="preview-table-panel" style="display:none; margin-top: 16px;">
+  <div class="panel-head"><h2>Matching Students</h2></div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead><tr><th>Admission No.</th><th>Name</th><th>Department</th><th>Year</th><th>Hosteller</th></tr></thead>
+      <tbody id="preview-table-body"></tbody>
+    </table>
+    <p class="field-hint" id="preview-truncated-note" style="display:none;">Showing first 50 of the matched students.</p>
+  </div>
+</section>
+
+<!-- HISTORY -->
+<section class="panel" style="margin-top: 20px;">
+  <div class="panel-head"><h2>Recent Batches</h2></div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead>
+        <tr><th>Title</th><th>Category</th><th>Target</th><th>Students</th><th>Total Amount</th><th>Status</th><th>Generated</th><th></th></tr>
+      </thead>
+      <tbody id="batch-history-body">
+        {% for batch in recent_batches %}
+        <tr data-batch-id="{{ batch.id }}">
+          <td>{{ batch.title }}</td>
+          <td>{{ batch.category.name }}</td>
+          <td>{{ batch.get_target_type_display }}</td>
+          <td>{{ batch.total_invoices_created }} / {{ batch.total_students_targeted }}</td>
+          <td>₹{{ batch.total_amount }}</td>
+          <td><span class="status-pill {{ batch.status }}">{{ batch.get_status_display }}</span></td>
+          <td>{{ batch.created_at|date:"d M Y, H:i" }}</td>
+          <td><button type="button" class="btn-ghost view-batch-btn" style="padding:6px 12px;">View</button></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8"><p class="empty-note">No bulk invoices generated yet.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- BATCH DETAIL -->
+<section class="panel" id="batch-detail-panel" style="display:none; margin-top:18px;">
+  <div class="panel-head">
+    <h2 id="batch-detail-title">Batch Detail</h2>
+    <button type="button" id="close-batch-detail-btn" class="btn-ghost">Close</button>
+  </div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead><tr><th>Admission No.</th><th>Name</th><th>Department</th><th>Invoice No.</th><th>Status</th></tr></thead>
+      <tbody id="batch-detail-body"></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block tab_js %}
+<style>
+  /* ---------- Extends the .field / .input-shell language used on the
+     Create Fee Structure page, rather than introducing a new one. ---------- */
+
+  .form-alert {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  .form-alert.error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .form-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+  .form-alert.warning { background: #fffbeb; border: 1px solid #fde68a; color: #b45309; }
+
+  /* Segmented control gets wider tap targets with 4 options */
+  #target-segmented { flex-wrap: wrap; }
+  #target-segmented label { white-space: nowrap; }
+
+  /* Let the search dropdown escape the card and sit above everything below it.
+     (.panel normally has overflow:hidden, which would clip the dropdown.) */
+  .panel.panel-overflow {
+    overflow: visible;
+    position: relative;
+    z-index: 5;
+  }
+
+  /* Student search dropdown, styled to sit under an .input-shell */
+  .student-search-results {
+    position: absolute;
+    z-index: 1000;
+    top: 100%;
+    left: 0; right: 0;
+    margin-top: 4px;
+    background: #fff;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    max-height: 230px;
+    overflow-y: auto;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .12);
+    display: none;
+  }
+  .student-search-results.open { display: block; }
+  .student-search-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--ink-900);
+    cursor: pointer;
+    border-bottom: 1px solid var(--line);
+  }
+  .student-search-row:last-child { border-bottom: none; }
+  .student-search-row:hover { background: var(--cream); }
+  .student-search-row .ssr-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .student-search-row .ssr-meta { color: var(--ink-500); margin-left: auto; font-size: 12px; }
+  .student-search-empty {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--ink-500);
+  }
+
+  /* Loading spinner on the right side of the search input */
+  .search-spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    margin-left: auto;
+    flex-shrink: 0;
+    border: 2px solid var(--line);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: ssr-spin .7s linear infinite;
+  }
+  .search-spinner.active { display: block; }
+  @keyframes ssr-spin { to { transform: rotate(360deg); } }
+
+  .selected-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .chip {
+    display: flex; align-items: center; gap: 7px;
+    background: #f3edf9;
+    border: 1px solid rgba(73, 50, 103, .2);
+    border-radius: 99px;
+    padding: 6px 6px 6px 13px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+  .chip button {
+    border: none; background: rgba(255,255,255,.7);
+    width: 18px; height: 18px; border-radius: 50%;
+    cursor: pointer; color: var(--primary); font-weight: 700; line-height: 1;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .chip button:hover { background: #fff; }
+
+  .preview-summary {
+    display: flex;
+    gap: 28px;
+    align-items: center;
+    padding: 16px 20px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    margin-top: 20px;
+  }
+  .preview-summary .num {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: #15803d;
+    line-height: 1;
+  }
+  .preview-summary .lbl {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ink-500);
+    margin-top: 4px;
+  }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+    text-transform: uppercase; letter-spacing: .03em;
+  }
+  .status-pill.completed { background: var(--green-soft); color: var(--secondary-light); }
+  .status-pill.pending { background: var(--amber-soft); color: var(--amber); }
+  .status-pill.failed { background: var(--red-soft); color: var(--red); }
+
+  .row-status-created { color: var(--secondary-light); font-weight: 700; font-size: 12px; }
+  .row-status-skipped { color: var(--ink-500); font-weight: 700; font-size: 12px; }
+  .row-status-failed { color: var(--red); font-weight: 700; font-size: 12px; }
+</style>
+
+<script>
+(function () {
+  const form = document.getElementById('bulk-form');
+  const alertBox = document.getElementById('form-alert');
+  const submitBtn = document.getElementById('submit-btn');
+  const previewBtn = document.getElementById('preview-btn');
+
+  function getCsrfToken() {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+  }
+
+  // Escape text before putting it into innerHTML
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // type: 'success' | 'error' | 'warning'
+  function showAlert(message, type) {
+    alertBox.textContent = message;
+    alertBox.className = `form-alert ${type}`;
+    alertBox.style.display = 'block';
+    alertBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function jsonFetch(url, opts = {}) {
+    return fetch(url, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken(), ...(opts.headers || {}) },
+    }).then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    });
+  }
+
+  // ---------- Element references (all declared up front so functions
+  // defined below can safely reference any of them, regardless of call order) ----------
+  const panelDept = document.getElementById('panel-department');
+  const deptTitle = document.getElementById('dept-title');
+  const panelManual = document.getElementById('panel-manual');
+  const manualTitle = document.getElementById('manual-title');
+  const panelExtra = document.getElementById('panel-extra-filters');
+  const extraTitle = document.getElementById('extra-title');
+
+  const searchInput = document.getElementById('student-search-input');
+  const searchResults = document.getElementById('student-search-results');
+  const searchSpinner = document.getElementById('search-spinner');
+  const chipsWrap = document.getElementById('selected-chips');
+  const selectedStudents = new Map();
+
+  // True only after a successful preview that matched at least one student.
+  // Any change to the form/selection sets it back to false.
+  let previewReady = false;
+
+  const previewSummary = document.getElementById('preview-summary');
+  const previewCount = document.getElementById('preview-count');
+  const previewTotal = document.getElementById('preview-total');
+  const previewTablePanel = document.getElementById('preview-table-panel');
+  const previewTableBody = document.getElementById('preview-table-body');
+  const previewTruncatedNote = document.getElementById('preview-truncated-note');
+
+  function resetPreview() {
+    previewSummary.style.display = 'none';
+    previewTablePanel.style.display = 'none';
+    previewReady = false;
+    alertBox.style.display = 'none';
+  }
+
+  // ---------- Target type switching ----------
+  function refreshTargetUI() {
+    const selected = document.querySelector('input[name="target_type"]:checked').value;
+    const showDept = selected === 'department';
+    const showManual = selected === 'manual';
+
+    panelDept.style.display = showDept ? '' : 'none';
+    deptTitle.style.display = showDept ? '' : 'none';
+    panelManual.style.display = showManual ? '' : 'none';
+    manualTitle.style.display = showManual ? '' : 'none';
+    panelExtra.style.display = showManual ? 'none' : '';
+    extraTitle.style.display = showManual ? 'none' : '';
+
+    resetPreview();
+  }
+  document.querySelectorAll('input[name="target_type"]').forEach((r) => r.addEventListener('change', refreshTargetUI));
+  // Ensure the correct panel is visible on first load (in case a browser
+  // restores a checked radio other than "All Students" on refresh).
+  refreshTargetUI();
+
+  // ---------- Manual student search ----------
+
+  function renderChips() {
+    chipsWrap.innerHTML = '';
+    selectedStudents.forEach((label, id) => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.innerHTML = `${esc(label)} <button type="button" data-id="${esc(id)}">×</button>`;
+      chip.querySelector('button').addEventListener('click', () => {
+        selectedStudents.delete(id);
+        renderChips();
+        resetPreview();
+      });
+      chipsWrap.appendChild(chip);
+    });
+  }
+
+  let searchTimer = null;
+  let searchReqId = 0;
+
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    const q = searchInput.value.trim();
+
+    if (!q) {
+      searchReqId++;                       // ignore any in-flight response
+      searchSpinner.classList.remove('active');
+      searchResults.classList.remove('open');
+      return;
+    }
+
+    searchTimer = setTimeout(async () => {
+      const reqId = ++searchReqId;
+      searchSpinner.classList.add('active');
+      try {
+        const res = await fetch(`{% url 'student-search' %}?q=${encodeURIComponent(q)}`);
+        const students = await res.json();
+        if (reqId !== searchReqId) return; // a newer search has started
+
+        searchResults.innerHTML = '';
+        if (!students.length) {
+          searchResults.innerHTML = '<div class="student-search-empty">No students found.</div>';
+        }
+        students.forEach((s) => {
+          const initials = (s.name || '?').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+          const row = document.createElement('div');
+          row.className = 'student-search-row';
+          row.innerHTML = `
+            <span class="ssr-avatar">${esc(initials || '?')}</span>
+            <span>${esc(s.admission_number)} — ${esc(s.name)}</span>
+            <span class="ssr-meta">${esc(s.department_name || '—')}</span>`;
+          row.addEventListener('click', () => {
+            selectedStudents.set(s.id, `${s.admission_number} — ${s.name}`);
+            renderChips();
+            searchResults.classList.remove('open');
+            searchInput.value = '';
+            resetPreview();
+          });
+          searchResults.appendChild(row);
+        });
+        searchResults.classList.add('open');
+      } catch (e) {
+        /* ignore */
+      } finally {
+        if (reqId === searchReqId) searchSpinner.classList.remove('active');
+      }
+    }, 250);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#panel-manual .field')) searchResults.classList.remove('open');
+  });
+
+  // ---------- Build target payload ----------
+  function buildTargetPayload() {
+    const target_type = document.querySelector('input[name="target_type"]:checked').value;
+    const payload = { target_type };
+    if (target_type === 'department') {
+      payload.department_ids = Array.from(document.querySelectorAll('.dept-check:checked')).map((c) => c.value);
+    }
+    if (target_type === 'manual') {
+      payload.student_ids = Array.from(selectedStudents.keys());
+    } else {
+      const yearFilter = document.getElementById('bf-year-filter').value;
+      if (yearFilter) payload.year = yearFilter;
+      payload.hostellers_only = document.getElementById('bf-hostellers-only').checked;
+    }
+    return payload;
+  }
+
+  // ---------- Preview ----------
+  previewBtn.addEventListener('click', async () => {
+    const amount = parseFloat(document.getElementById('bf-amount').value || '0');
+    try {
+      const payload = buildTargetPayload();
+      const data = await jsonFetch("{% url 'bulk-invoice-preview' %}", { method: 'POST', body: JSON.stringify(payload) });
+      previewCount.textContent = data.matched_count;
+      previewTotal.textContent = '₹' + (data.matched_count * amount).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+      previewSummary.style.display = 'flex';
+
+      previewTableBody.innerHTML = '';
+      data.sample_students.forEach((s) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${esc(s.admission_number)}</td><td>${esc(s.name)}</td><td>${esc(s.department_name || '—')}</td><td>Year ${esc(s.year || '—')}</td><td>${s.is_hostellar ? 'Yes' : 'No'}</td>`;
+        previewTableBody.appendChild(tr);
+      });
+      previewTablePanel.style.display = data.sample_students.length ? 'block' : 'none';
+      previewTruncatedNote.style.display = data.truncated ? 'block' : 'none';
+
+      previewReady = data.matched_count > 0;
+      if (data.matched_count === 0) showAlert('No students matched this selection.', 'error');
+      else alertBox.style.display = 'none';
+    } catch (e) {
+      showAlert((e.data && (e.data.detail || Object.values(e.data).flat().join(' '))) || 'Could not preview.', 'error');
+      resetPreview();
+    }
+  });
+
+  form.addEventListener('input', (e) => {
+    if (e.target.id !== 'student-search-input') resetPreview();
+  });
+  form.addEventListener('change', resetPreview);
+
+  // ---------- Generate ----------
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    alertBox.style.display = 'none';
+
+    // Must preview first so the admin can see who will be billed
+    if (!previewReady) {
+      showAlert('Please click "Preview Matching Students" first to check who will be billed, then click Generate Invoices.', 'warning');
+      return;
+    }
+
+    const category = document.getElementById('bf-category').value;
+    const title = document.getElementById('bf-title').value.trim();
+    const amount = document.getElementById('bf-amount').value;
+    const academicYear = document.getElementById('bf-academic-year').value.trim();
+    const dueDate = document.getElementById('bf-due-date').value;
+
+    if (!category || !title || !amount || !academicYear || !dueDate) {
+      showAlert('Please fill in category, title, amount, academic year and due date.', 'error');
+      return;
+    }
+
+    const payload = {
+      ...buildTargetPayload(),
+      category,
+      title,
+      remarks: document.getElementById('bf-remarks').value.trim(),
+      amount_per_student: amount,
+      academic_year: academicYear,
+      semester: document.getElementById('bf-semester').value || null,
+      due_date: dueDate,
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Generating…';
+
+    try {
+      const batch = await jsonFetch("{% url 'bulk-invoice-generate' %}", { method: 'POST', body: JSON.stringify(payload) });
+
+      // Nothing new was created (everyone already billed) → warning, not success
+      const alertType = batch.total_invoices_created > 0 ? 'success' : 'warning';
+      const message = batch.message || `Done — ${batch.total_invoices_created} invoice(s) created.`;
+
+      prependBatchRow(batch);
+      resetPreview();
+      form.reset();
+      selectedStudents.clear();
+      renderChips();
+      refreshTargetUI();
+      // Show the alert AFTER the resets above, because resetPreview() hides it
+      showAlert(message, alertType);
+    } catch (err) {
+      // A failed batch is still saved on the server, so show it in history too
+      if (err.data && err.data.batch) prependBatchRow(err.data.batch);
+
+      showAlert(
+        (err.data && (err.data.detail || Object.values(err.data).flat().join(' '))) || 'Could not generate invoices.',
+        'error'
+      );
+      submitBtn.disabled = false;
+    } finally {
+      submitBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Generate Invoices`;
+    }
+  });
+
+  function prependBatchRow(batch) {
+    const tbody = document.getElementById('batch-history-body');
+    const emptyRow = tbody.querySelector('td[colspan]');
+    if (emptyRow) emptyRow.closest('tr').remove();
+
+    const tr = document.createElement('tr');
+    tr.dataset.batchId = batch.id;
+    tr.innerHTML = `
+      <td>${esc(batch.title)}</td>
+      <td>${esc(batch.category_name)}</td>
+      <td>${esc(batch.target_type)}</td>
+      <td>${esc(batch.total_invoices_created)} / ${esc(batch.total_students_targeted)}</td>
+      <td>₹${esc(batch.total_amount)}</td>
+      <td><span class="status-pill ${esc(batch.status)}">${esc(batch.status)}</span></td>
+      <td>Just now</td>
+      <td><button type="button" class="btn-ghost view-batch-btn" style="padding:6px 12px;">View</button></td>`;
+    tbody.insertBefore(tr, tbody.firstChild);
+    bindViewButton(tr.querySelector('.view-batch-btn'), batch.id, batch.title);
+  }
+
+  // ---------- Batch detail ----------
+  const detailPanel = document.getElementById('batch-detail-panel');
+  const detailTitle = document.getElementById('batch-detail-title');
+  const detailBody = document.getElementById('batch-detail-body');
+
+  function bindViewButton(btn, batchId, title) {
+    btn.addEventListener('click', async () => {
+      detailTitle.textContent = title || 'Batch Detail';
+      detailBody.innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
+      detailPanel.style.display = 'block';
+      detailPanel.scrollIntoView({ behavior: 'smooth' });
+      try {
+        const url = `{% url 'bulk-invoice-detail' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', batchId);
+        const data = await (await fetch(url)).json();
+        detailBody.innerHTML = '';
+        if (!data.rows.length) {
+          detailBody.innerHTML = '<tr><td colspan="5"><p class="empty-note">No students in this batch.</p></td></tr>';
+          return;
+        }
+        data.rows.forEach((r) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${esc(r.admission_number)}</td><td>${esc(r.student_name)}</td><td>${esc(r.department_name || '—')}</td>
+            <td>${esc(r.invoice_number || '—')}</td><td class="row-status-${esc(r.status)}">${esc(r.status)}</td>`;
+          detailBody.appendChild(tr);
+        });
+      } catch (e) {
+        detailBody.innerHTML = '<tr><td colspan="5">Could not load batch details.</td></tr>';
+      }
+    });
+  }
+  document.querySelectorAll('.view-batch-btn').forEach((btn) => {
+    const row = btn.closest('tr');
+    bindViewButton(btn, row.dataset.batchId, row.children[0].textContent);
+  });
+  document.getElementById('close-batch-detail-btn').addEventListener('click', () => { detailPanel.style.display = 'none'; });
+})();
+</script>
+{% endblock %}

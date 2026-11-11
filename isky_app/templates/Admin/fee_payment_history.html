@@ -1,0 +1,506 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Fee Invoice History{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Fee Invoice History</span>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Fee Invoice History</h1>
+    <div class="college-line">Filter invoices by department, year, or status — and record an offline payment against an invoice when a student settles in person</div>
+  </div>
+</div>
+
+<div id="form-alert" class="form-alert" style="display:none;"></div>
+
+<!-- FILTERS -->
+<section class="panel">
+  <div class="panel-head"><h2>Filters</h2></div>
+  <div class="panel-body">
+    <div class="form-grid-4">
+
+      <div class="field">
+        <label for="f-department">Department</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+          <select id="f-department">
+            <option value="">All departments</option>
+            {% for dept in departments %}
+            <option value="{{ dept.id }}">{{ dept.name }} ({{ dept.short_name }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-year">Year</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/></svg>
+          <select id="f-year">
+            <option value="">Any year</option>
+            <option value="1">1st Year</option>
+            <option value="2">2nd Year</option>
+            <option value="3">3rd Year</option>
+            <option value="4">4th Year</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-status">Status</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg>
+          <select id="f-status">
+            <option value="">Any status</option>
+            <option value="pending">Pending</option>
+            <option value="partial">Partially Paid</option>
+            <option value="paid">Paid</option>
+            <option value="overdue">Overdue</option>
+            <option value="waived">Waived</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-search">Search</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="f-search" placeholder="Invoice no., admission no., name…">
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section class="panel" style="margin-top: 20px;">
+  <div class="panel-head">
+    <h2>Invoices <span id="result-count" class="count-badge"></span></h2>
+  </div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead>
+        <tr>
+          <th>Invoice No.</th><th>Student</th><th>Dept</th><th>Year</th><th>Category</th>
+          <th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Due Date</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="invoices-body">
+        <tr><td colspan="11"><p class="empty-note">Loading…</p></td></tr>
+      </tbody>
+    </table>
+    <div class="pager" id="pager" style="display:none;">
+      <button type="button" class="btn-ghost" id="prev-page-btn">← Previous</button>
+      <span id="page-indicator"></span>
+      <button type="button" class="btn-ghost" id="next-page-btn">Next →</button>
+    </div>
+  </div>
+</section>
+
+<!-- DETAIL PANEL -->
+<section class="panel" id="detail-panel" style="display:none; margin-top: 20px;">
+  <div class="panel-head">
+    <h2 id="detail-title">Invoice Detail</h2>
+    <button type="button" id="close-detail-btn" class="btn-ghost">Close</button>
+  </div>
+  <div class="panel-body">
+
+    <div class="form-grid-2" id="detail-readonly"><!-- populated by JS --></div>
+
+    <div class="form-section-title" style="margin-top: 22px;">Fee Items</div>
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead><tr><th>Category</th><th>Gross</th><th>Concession</th><th>Amount</th></tr></thead>
+        <tbody id="items-body"></tbody>
+      </table>
+    </div>
+
+    <div class="form-section-title" style="margin-top: 22px;">Payments Recorded</div>
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead><tr><th>Receipt No.</th><th>Type</th><th>Mode</th><th>Amount</th><th>Status</th><th>Collected By</th><th>Date</th></tr></thead>
+        <tbody id="payments-body"></tbody>
+      </table>
+    </div>
+
+    <div id="record-section" style="display:none; margin-top: 22px;">
+      <div class="form-section-title">Record Offline Payment</div>
+      <p class="field-hint" style="margin-top:-6px; margin-bottom:14px;">
+        Use this when a student pays their fee bill in person instead of online — cash, cheque, DD, or a bank transfer against this invoice.
+      </p>
+      <form id="record-form" autocomplete="off">
+        <div class="form-grid-2">
+          <div class="field">
+            <label for="rf-amount">Amount (₹)</label>
+            <div class="input-shell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 8h12M6 13h5a4 4 0 0 0 4-4V8M6 13l8 8" /></svg>
+
+              <input type="number" id="rf-amount" min="0.01" step="0.01" required>
+            </div>
+            <p class="field-hint" id="rf-balance-hint"></p>
+          </div>
+          <div class="field">
+            <label for="rf-mode">Payment Mode</label>
+            <div class="input-shell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              <select id="rf-mode" required>
+                <option value="">Select mode</option>
+                <option value="cash">Cash</option>
+                <option value="cheque">Cheque</option>
+                <option value="dd">Demand Draft</option>
+                <option value="bank_transfer">Bank Transfer</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" id="rf-cheque-field" style="display:none;">
+            <label for="rf-cheque-number">Cheque / DD Number</label>
+            <div class="input-shell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+              <input type="text" id="rf-cheque-number" placeholder="e.g. 004521">
+            </div>
+          </div>
+          <div class="field" id="rf-bank-field" style="display:none;">
+            <label for="rf-bank-name">Bank Name</label>
+            <div class="input-shell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+              <input type="text" id="rf-bank-name" placeholder="e.g. HDFC Bank">
+            </div>
+          </div>
+          <div class="field col-span-2">
+            <label for="rf-remarks">Remarks (optional)</label>
+            <div class="input-shell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <input type="text" id="rf-remarks" placeholder="Any note about this payment">
+            </div>
+          </div>
+          <div class="field col-span-2">
+            <label style="display:flex; align-items:center; gap: 9px; font-size: 13px; font-weight: 600; color: var(--ink-900); cursor:pointer; padding: 12px 14px; background:#fff; border:1.5px solid var(--line); border-radius:12px;">
+              <input type="checkbox" id="rf-mark-paid" checked style="width:16px; height:16px; accent-color: var(--primary);">
+              Mark as received (status → Success) immediately — leave unchecked for cheque/DD pending clearance
+            </label>
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 18px; justify-content: flex-start;">
+          <button type="submit" class="btn-primary" id="record-submit-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            Record Payment
+          </button>
+        </div>
+      </form>
+    </div>
+    <p class="field-hint" id="record-disabled-note" style="display:none; margin-top: 16px;">This invoice is already settled — no further payment can be recorded.</p>
+
+  </div>
+</section>
+{% endblock %}
+
+{% block tab_js %}
+<style>
+  .form-alert { margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; font-size: 14px; }
+  .form-alert.error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .form-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+
+  .form-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .form-grid-4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .form-grid-4 { grid-template-columns: 1fr; } }
+
+  .count-badge {
+    font-size: 11px; font-weight: 700; color: var(--ink-500);
+    background: var(--cream, #f7f4ee); border-radius: 99px; padding: 2px 10px; margin-left: 8px;
+  }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+    text-transform: uppercase; letter-spacing: .03em;
+  }
+  .status-pill.paid, .status-pill.success { background: var(--green-soft, #f0fdf4); color: var(--secondary-light, #15803d); }
+  .status-pill.pending { background: var(--amber-soft, #fffbeb); color: var(--amber, #b45309); }
+  .status-pill.partial { background: #fff7ed; color: #c2410c; }
+  .status-pill.overdue, .status-pill.failed { background: var(--red-soft, #fef2f2); color: var(--red, #b91c1c); }
+  .status-pill.waived { background: #eef2ff; color: #4338ca; }
+  .status-pill.cancelled { background: #f1f5f9; color: #475569; }
+  .status-pill.refunded { background: #eef2ff; color: #4338ca; }
+
+  .type-pill {
+    display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 700;
+    padding: 3px 9px; border-radius: 99px; text-transform: uppercase; letter-spacing: .03em;
+  }
+  .type-pill.online { background: #eef2ff; color: #4338ca; }
+  .type-pill.offline { background: #f3edf9; color: var(--primary); }
+
+  .pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; }
+  .pager span { font-size: 12.5px; color: var(--ink-500); font-weight: 600; }
+
+  .detail-item { display: flex; flex-direction: column; gap: 3px; }
+  .detail-item .dl { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-500); }
+  .detail-item .dv { font-size: 14px; font-weight: 600; color: var(--ink-900); }
+
+  .view-invoice-btn { padding: 6px 12px; }
+</style>
+
+<script>
+(function () {
+  const alertBox = document.getElementById('form-alert');
+  const tbody = document.getElementById('invoices-body');
+  const resultCount = document.getElementById('result-count');
+  const pager = document.getElementById('pager');
+  const pageIndicator = document.getElementById('page-indicator');
+  const prevBtn = document.getElementById('prev-page-btn');
+  const nextBtn = document.getElementById('next-page-btn');
+
+  const fDept = document.getElementById('f-department');
+  const fYear = document.getElementById('f-year');
+  const fStatus = document.getElementById('f-status');
+  const fSearch = document.getElementById('f-search');
+
+  let currentPage = 1;
+  let hasNext = false;
+  let searchTimer = null;
+
+  function getCsrfToken() {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+  }
+
+  function showAlert(message, type) {
+    alertBox.textContent = message;
+    alertBox.className = `form-alert ${type}`;
+    alertBox.style.display = 'block';
+    alertBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function jsonFetch(url, opts = {}) {
+    return fetch(url, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken(), ...(opts.headers || {}) },
+    }).then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    });
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function buildQuery(page) {
+    const params = new URLSearchParams();
+    if (fDept.value) params.set('department', fDept.value);
+    if (fYear.value) params.set('year', fYear.value);
+    if (fStatus.value) params.set('status', fStatus.value);
+    if (fSearch.value.trim()) params.set('q', fSearch.value.trim());
+    params.set('page', page);
+    return params.toString();
+  }
+
+  async function loadInvoices(page = 1) {
+    tbody.innerHTML = '<tr><td colspan="11"><p class="empty-note">Loading…</p></td></tr>';
+    try {
+      const data = await (await fetch(`{% url 'invoice-list' %}?${buildQuery(page)}`)).json();
+      currentPage = data.page;
+      hasNext = data.has_next;
+      resultCount.textContent = data.count;
+
+      if (!data.results.length) {
+        tbody.innerHTML = '<tr><td colspan="11"><p class="empty-note">No invoices match these filters.</p></td></tr>';
+        pager.style.display = 'none';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      data.results.forEach((inv) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${inv.invoice_number}</td>
+          <td>${inv.student_name} <span style="color:var(--ink-500); font-size:12px;">(${inv.admission_number})</span></td>
+          <td>${inv.department_name || '—'}</td>
+          <td>${inv.year || '—'}</td>
+          <td>${inv.category_names.join(', ') || '—'}</td>
+          <td>₹${inv.total_amount}</td>
+          <td>₹${inv.amount_paid}</td>
+          <td>₹${inv.balance_due}</td>
+          <td><span class="status-pill ${inv.status}">${inv.status}</span></td>
+          <td>${inv.due_date}</td>
+          <td><button type="button" class="btn-ghost view-invoice-btn" data-id="${inv.id}">View</button></td>`;
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll('.view-invoice-btn').forEach((btn) => {
+        btn.addEventListener('click', () => openDetail(btn.dataset.id));
+      });
+
+      pager.style.display = (data.count > data.page_size) ? 'flex' : 'none';
+      pageIndicator.textContent = `Page ${currentPage}`;
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = !hasNext;
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="11"><p class="empty-note">Could not load invoices.</p></td></tr>';
+    }
+  }
+
+  [fDept, fYear, fStatus].forEach((el) => el.addEventListener('change', () => loadInvoices(1)));
+  fSearch.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => loadInvoices(1), 300);
+  });
+  prevBtn.addEventListener('click', () => { if (currentPage > 1) loadInvoices(currentPage - 1); });
+  nextBtn.addEventListener('click', () => { if (hasNext) loadInvoices(currentPage + 1); });
+
+  // ---------- Detail panel ----------
+  const detailPanel = document.getElementById('detail-panel');
+  const detailTitle = document.getElementById('detail-title');
+  const detailReadonly = document.getElementById('detail-readonly');
+  const itemsBody = document.getElementById('items-body');
+  const paymentsBody = document.getElementById('payments-body');
+  const recordSection = document.getElementById('record-section');
+  const recordDisabledNote = document.getElementById('record-disabled-note');
+  const recordForm = document.getElementById('record-form');
+  const rfAmount = document.getElementById('rf-amount');
+  const rfBalanceHint = document.getElementById('rf-balance-hint');
+  const rfMode = document.getElementById('rf-mode');
+  const rfChequeField = document.getElementById('rf-cheque-field');
+  const rfBankField = document.getElementById('rf-bank-field');
+  const recordSubmitBtn = document.getElementById('record-submit-btn');
+
+  let activeInvoiceId = null;
+
+  function detailItem(label, value) {
+    return `<div class="detail-item"><span class="dl">${label}</span><span class="dv">${value ?? '—'}</span></div>`;
+  }
+
+  const SETTLED_STATUSES = ['paid', 'waived', 'cancelled'];
+
+  async function openDetail(invoiceId) {
+    activeInvoiceId = invoiceId;
+    detailPanel.style.display = 'block';
+    detailTitle.textContent = 'Loading…';
+    detailReadonly.innerHTML = '';
+    itemsBody.innerHTML = '';
+    paymentsBody.innerHTML = '';
+    recordSection.style.display = 'none';
+    recordDisabledNote.style.display = 'none';
+    recordForm.reset();
+    rfChequeField.style.display = 'none';
+    rfBankField.style.display = 'none';
+    detailPanel.scrollIntoView({ behavior: 'smooth' });
+
+    try {
+      const url = `{% url 'invoice-detail' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', invoiceId);
+      const inv = await (await fetch(url)).json();
+      renderInvoiceDetail(inv);
+    } catch (e) {
+      detailTitle.textContent = 'Could not load this invoice.';
+    }
+  }
+
+  function renderInvoiceDetail(inv) {
+    detailTitle.textContent = `${inv.invoice_number} — ${inv.student_name}`;
+    detailReadonly.innerHTML = [
+      detailItem('Student', `${inv.student_name} (${inv.admission_number})`),
+      detailItem('Department / Year', `${inv.department_name || '—'} · Year ${inv.year || '—'}`),
+      detailItem('Academic Year / Sem', `${inv.academic_year}${inv.semester ? ' · Sem ' + inv.semester : ''}`),
+      detailItem('Total', `₹${inv.total_amount}`),
+      detailItem('Discount', `₹${inv.discount_amount}${inv.discount_reason ? ' (' + inv.discount_reason + ')' : ''}`),
+      detailItem('Paid', `₹${inv.amount_paid}`),
+      detailItem('Balance Due', `₹${inv.balance_due}`),
+      detailItem('Status', `<span class="status-pill ${inv.status}">${inv.status}</span>`),
+      detailItem('Due Date', inv.due_date),
+      detailItem('Generated', formatDate(inv.generated_at)),
+    ].join('');
+
+    itemsBody.innerHTML = inv.items.length
+      ? inv.items.map((it) => `
+          <tr>
+            <td>${it.category_name}</td>
+            <td>₹${it.gross_amount}</td>
+            <td>₹${it.concession_amount}</td>
+            <td>₹${it.amount}</td>
+          </tr>`).join('')
+      : '<tr><td colspan="4"><p class="empty-note">No fee items.</p></td></tr>';
+
+    paymentsBody.innerHTML = inv.payments.length
+      ? inv.payments.map((p) => `
+          <tr>
+            <td>${p.receipt_number}</td>
+            <td><span class="type-pill ${p.payment_type}">${p.payment_type}</span></td>
+            <td>${p.payment_mode.replace('_', ' ')}</td>
+            <td>₹${p.amount}</td>
+            <td><span class="status-pill ${p.status}">${p.status}</span></td>
+            <td>${p.collected_by_name || '—'}</td>
+            <td>${formatDate(p.created_at)}</td>
+          </tr>`).join('')
+      : '<tr><td colspan="7"><p class="empty-note">No payments recorded yet.</p></td></tr>';
+
+    const settled = SETTLED_STATUSES.includes(inv.status);
+    recordSection.style.display = settled ? 'none' : 'block';
+    recordDisabledNote.style.display = settled ? 'block' : 'none';
+
+    if (!settled) {
+      rfAmount.value = inv.balance_due;
+      rfAmount.max = inv.balance_due;
+      rfBalanceHint.textContent = `Outstanding balance: ₹${inv.balance_due}`;
+    }
+  }
+
+  rfMode.addEventListener('change', () => {
+    const mode = rfMode.value;
+    rfChequeField.style.display = (mode === 'cheque' || mode === 'dd') ? '' : 'none';
+    rfBankField.style.display = (mode === 'cheque' || mode === 'dd' || mode === 'bank_transfer') ? '' : 'none';
+  });
+
+  recordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!activeInvoiceId) return;
+
+    const payload = {
+      amount: rfAmount.value,
+      payment_mode: rfMode.value,
+      cheque_or_dd_number: document.getElementById('rf-cheque-number').value.trim(),
+      bank_name: document.getElementById('rf-bank-name').value.trim(),
+      remarks: document.getElementById('rf-remarks').value.trim(),
+      mark_as_paid: document.getElementById('rf-mark-paid').checked,
+    };
+
+    recordSubmitBtn.disabled = true;
+    recordSubmitBtn.textContent = 'Saving…';
+    try {
+      const url = `{% url 'invoice-record-offline-payment' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', activeInvoiceId);
+      const inv = await jsonFetch(url, { method: 'POST', body: JSON.stringify(payload) });
+      showAlert('Payment recorded.', 'success');
+      renderInvoiceDetail(inv);
+      recordForm.reset();
+      rfChequeField.style.display = 'none';
+      rfBankField.style.display = 'none';
+      loadInvoices(currentPage);
+    } catch (err) {
+      showAlert((err.data && (err.data.detail || Object.values(err.data).flat().join(' '))) || 'Could not record payment.', 'error');
+    } finally {
+      recordSubmitBtn.disabled = false;
+      recordSubmitBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Record Payment`;
+    }
+  });
+
+  document.getElementById('close-detail-btn').addEventListener('click', () => {
+    detailPanel.style.display = 'none';
+    activeInvoiceId = null;
+  });
+
+  // Initial load
+  loadInvoices(1);
+})();
+</script>
+{% endblock %}

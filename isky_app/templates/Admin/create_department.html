@@ -1,0 +1,171 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Add Departments{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'department-list' %}" class="crumb-link">Departments</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Add Departments</span>
+
+{% endblock %}
+
+
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Add Departments</h1>
+    <div class="college-line">Create one or more departments under {{ college.name|default:"your college" }}</div>
+  </div>
+  <a href="{% url 'department-list' %}" class="btn-ghost">Back to Departments</a>
+</div>
+
+{% comment %} <section class="panel">
+  <div class="panel-head"><h2>Bulk paste (optional)</h2></div>
+  <div class="panel-body">
+    <p class="field-hint">Paste rows as <code>code, name</code> — one per line — then click Parse.</p>
+    <textarea id="bulk-paste" rows="4" style="width:100%;font-family:monospace;"
+      placeholder="105, Computer Science &amp; Engineering&#10;106, Electronics &amp; Communication&#10;107, Mechanical Engineering"></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px;">
+      <button type="button" class="btn-ghost" onclick="parseBulk()">Parse into rows</button>
+      <button type="button" class="btn-ghost" onclick="quickFill()">Quick fill sequential codes</button>
+      <input type="number" id="quick-start" placeholder="Start code e.g. 105" style="width:140px;">
+      <input type="number" id="quick-count" placeholder="How many rows" style="width:120px;">
+    </div>
+  </div>
+</section> {% endcomment %}
+
+<form id="dept-form" autocomplete="off">
+  <section class="panel">
+    <div class="panel-head"><h2>Department Rows</h2></div>
+    <div class="panel-body">
+      <div class="input-shell " style="margin-bottom: 10px;">
+        <!-- Graduation Cap Icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+          <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+        </svg>
+        <input type="text" class="row-short" name="degree" placeholder="Eg B.Tech" required >
+      </div>
+      <table id="dept-rows" style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Code*</th>
+            <th style="text-align:left;">Short Name*</th>
+            <th style="text-align:left;">Name*</th>
+            <th style="text-align:left;">Status*</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="dept-rows-body">
+          <!-- rows injected here -->
+        </tbody>
+      </table>
+      <button type="button" class="btn-ghost" onclick="addRow()" style="margin-top:12px;">+ Add Row</button>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <a href="{% url 'department-list' %}" class="btn-ghost">Cancel</a>
+    <button type="submit" class="btn-primary">Create All Departments</button>
+  </div>
+</form>
+
+<style>
+  /* Table-specific tweaks so input-shell fits inline in a row */
+   {% comment %} #dept-rows td { padding: 6px 8px; vertical-align: middle; } {% endcomment %}
+  #dept-rows .input-shell { padding: 8px 12px; border-radius: 10px; }
+  #dept-rows .input-shell input,
+  #dept-rows .input-shell select { font-size: 0.9rem; }
+  .row-code-shell { width: 120px; }
+</style>
+<script>
+function rowTemplate(code = '', name = '',short_name='') {
+  return `<tr>
+    <td>
+      <div class="input-shell row-code-shell">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2 8 22M15.5 2 14 22M20 8H4M19 16H3"/></svg>
+        <input type="text" class="row-code" value="${code}" placeholder="105" required>
+      </div>
+    </td>
+    <td>
+      <div class="input-shell row-code-shell">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2 8 22M15.5 2 14 22M20 8H4M19 16H3"/></svg>
+        <input type="text" class="row-short" value="${short_name}" placeholder="CSE" required>
+      </div>
+    </td>
+    <td>
+      <div class="input-shell">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        <input type="text" class="row-name" value="${name}" placeholder="Department name" required>
+      </div>
+    </td>
+    <td>
+      <div class="input-shell">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <select class="row-active">
+          <option value="true" selected>Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
+    </td>
+    <td><button type="button" class="btn-ghost" onclick="this.closest('tr').remove()">✕</button></td>
+  </tr>`;
+}
+
+function addRow(code = '', name = '',short_name='') {
+  document.getElementById('dept-rows-body').insertAdjacentHTML('beforeend', rowTemplate(code ,name,short_name));
+}
+
+function parseBulk() {
+  const text = document.getElementById('bulk-paste').value.trim();
+  if (!text) return;
+  text.split('\n').forEach(line => {
+    const [code, ...rest] = line.split(',');
+    const name = rest.join(',').trim();
+    const short_anme = rest.join(',').trim();
+    if (code && name && short_name) addRow(code.trim(), name,short_name);
+  });
+  document.getElementById('bulk-paste').value = '';
+}
+
+function quickFill() {
+  const start = parseInt(document.getElementById('quick-start').value, 10);
+  const count = parseInt(document.getElementById('quick-count').value, 10);
+  if (isNaN(start) || isNaN(count)) return;
+  for (let i = 0; i < count; i++) addRow(String(start + i), '','');
+}
+
+addRow(); // start with one empty row
+
+document.getElementById('dept-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const rows = [...document.querySelectorAll('#dept-rows-body tr')].map(tr => ({
+    code: tr.querySelector('.row-code').value.trim(),
+    short_name: tr.querySelector('.row-short').value.trim(),
+    name: tr.querySelector('.row-name').value.trim(),
+    is_active: tr.querySelector('.row-active').value === 'true',
+    college: '{{ college|default:"null" }}',
+  }));
+  console.log(JSON.stringify(rows))
+
+  const resp = await fetch("{% url 'department-create' %}", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+    },
+    body: JSON.stringify(rows),
+  });
+
+  if (resp.ok) {
+    window.location.href = "{% url 'department-list' %}";
+  } else {
+    const err = await resp.json();
+    alert(JSON.stringify(err));
+  }
+});
+</script>
+{% endblock %}

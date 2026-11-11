@@ -1,0 +1,51 @@
+{% extends "Admin/sidebar.html" %}
+
+
+{% block title %}ISKY ERP · Office Admins{% endblock %}
+{% block breadcrumb_label %}Office Admins{% endblock %}
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Office Admins</h1>
+    <div class="college-line">Front-office and admissions-level accounts</div>
+  </div>
+  {% if  can_edit %}
+  <a href="{% url 'create-office-admin' %}" class="btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    Create Office Admin
+  </a>
+  {%endif%}
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>All Office Admins</h2></div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead>
+        <tr><th>Name</th><th>Employee ID</th><th>Access Department</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for a in office_admins %}
+        <tr>
+          <td>
+            <div class="dir-item" style="border:none;padding:0;">
+              <div class="dir-avatar">{{ a.user.first_name|slice:":2"|upper }}</div>
+              <div class="dir-info">
+                <div class="dn">{{ a.user.first_name }}</div>
+                <div >{{ a.user }}</div>
+                <div >{{ a.get_role_display }}</div>
+            </div>
+          </td>
+          <td>{{ a.employee_or_student_id }}</td>
+          <td>{{ a.dept|default:"All departments"|upper }}</td>
+          <td><span class="pill {{ a.status|default:'active' }}">{{ a.status|default:"Active" }}</span></td>
+          <td><a href="{% url 'office-admin-detail' a.id %}" class="view-all">Manage</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><p class="empty-note">No office admins created yet. Use the button above to add one.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

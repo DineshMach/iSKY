@@ -1,0 +1,373 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · {{ dashboard_title }}{% endblock %}
+{% block breadcrumb_label %}Dashboard{% endblock %}
+
+{% block tab_css %}
+<style>
+  .dash-ledger{display:flex;align-items:center;gap:22px;flex-wrap:wrap;background:var(--primary-dark);color:#fff;border-radius:var(--radius);padding:14px 20px;margin-bottom:24px;font-family:'JetBrains Mono',monospace;font-size:12.5px;}
+  .dash-ledger .dot{width:8px;height:8px;border-radius:50%;background:var(--secondary-light);display:inline-block;margin-right:8px;box-shadow:0 0 0 4px rgba(10,107,102,.25);}
+  .dash-ledger .item{color:rgba(255,255,255,.75);}
+  .dash-ledger .item b{color:#fff;font-weight:600;}
+  .dash-ledger .sep{width:1px;height:14px;background:rgba(255,255,255,.15);}
+
+  .dash-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:26px;}
+  .kpi-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px 14px;}
+  .kpi-card .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .kpi-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  .kpi-icon svg{width:16px;height:16px;}
+  .kpi-num{font-family:'Fraunces',serif;font-size:28px;font-weight:600;line-height:1;}
+  .kpi-label{font-size:12px;color:var(--ink-500);margin-top:5px;}
+
+  .dash-grid-2{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-bottom:18px;}
+  @media (max-width:980px){ .dash-grid-2{grid-template-columns:1fr;} }
+  .dash-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px;}
+  @media (max-width:1180px){ .dash-grid-3{grid-template-columns:1fr;} }
+
+  .dept-row{padding:12px 0;border-bottom:1px solid var(--line);}
+  .dept-row:last-child{border-bottom:none;}
+  .dept-row-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .dept-row-head .d-name{font-weight:600;font-size:13.5px;}
+  .dept-row-head .d-code{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-500);}
+  .dept-row-head .d-count{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink-500);}
+  .year-bars{display:flex;gap:6px;}
+  .year-bar{flex:1;background:var(--cream);border:1px solid var(--line);border-radius:7px;padding:6px 8px;text-align:center;}
+  .year-bar .yn{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;}
+  .year-bar .yl{font-size:9.5px;color:var(--ink-500);letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+
+  .qa-btn{display:flex;align-items:center;gap:11px;width:100%;background:var(--cream);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 13px;margin-bottom:9px;text-decoration:none;color:var(--ink-900);font-size:13px;font-weight:600;transition:border-color .15s ease,background .15s ease;}
+  .qa-btn:hover{border-color:var(--gold);background:var(--gold-soft);}
+  .qa-btn .qa-icon{width:30px;height:30px;border-radius:8px;background:var(--primary-dark);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .qa-btn .qa-icon svg{width:15px;height:15px;}
+  .qa-btn span.desc{display:block;font-weight:400;font-size:11px;color:var(--ink-500);margin-top:1px;}
+
+  .fee-collect{display:flex;align-items:center;gap:16px;margin-bottom:16px;}
+  .fee-ring{width:66px;height:66px;border-radius:50%;flex-shrink:0;background:conic-gradient(var(--secondary-light) calc(var(--pct,0)*1%), var(--line) 0);display:flex;align-items:center;justify-content:center;}
+  .fee-ring .hole{width:48px;height:48px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;}
+  .fee-copy .ft{font-size:13px;font-weight:600;}
+  .fee-copy .fs{font-size:11.5px;color:var(--ink-500);}
+  .fee-row,.dept-fee-row,.pay-row,.batch-row,.period-row,.class-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px;}
+  .fee-row:last-child,.dept-fee-row:last-child,.pay-row:last-child,.batch-row:last-child,.period-row:last-child,.class-row:last-child{border-bottom:none;}
+  .fee-row .fn,.pay-row .pn,.dept-fee-row .dfn,.class-row .cn{font-weight:600;}
+  .fee-row .fd,.pay-row .pd,.dept-fee-row .dfs,.batch-row .bd,.period-row .prs,.class-row .cd{color:var(--ink-500);font-size:11.5px;margin-top:1px;}
+  .fee-amt,.dept-fee-amt,.pay-amt{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--secondary-light);}
+  .fee-amt{color:var(--red);}
+  .batch-row .bn{font-family:'JetBrains Mono',monospace;font-weight:600;}
+  .batch-pill{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:999px;}
+  .batch-pill.settled{background:var(--green-soft);color:var(--secondary-light);}
+  .batch-pill.partially_settled{background:var(--amber-soft);color:var(--amber);}
+  .batch-pill.pending,.batch-pill.processing{background:var(--gold-soft);color:var(--gold);}
+  .batch-pill.failed{background:var(--red-soft);color:var(--red);}
+
+  .period-row .p-time{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ink-500);min-width:78px;}
+  .attendance-pill{font-size:10.5px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:999px;}
+  .attendance-pill.done{background:var(--green-soft);color:var(--secondary-light);}
+  .attendance-pill.pending{background:var(--amber-soft);color:var(--amber);}
+  .take-attendance-link{font-size:11.5px;font-weight:600;color:var(--gold);text-decoration:none;}
+</style>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>{{ dashboard_title }}</h1>
+    {% if college %}
+    <div class="college-line"><strong>{{ college.name|default:"Your College" }}</strong> · {{ college.code|default:"COLLEGE-CODE" }} · {{ college.city|default:"City" }}, {{ college.state|default:"State" }}</div>
+    {% endif %}
+  </div>
+  <div class="dash-date">{% now "D, d M Y" %}</div>
+</div>
+
+{% if sections.kpis %}
+<div class="dash-ledger">
+  <span class="item"><span class="dot"></span>All systems operational</span>
+  {% if stats.academic_year %}<span class="sep"></span><span class="item">Academic year <b>{{ stats.academic_year }}</b></span>{% endif %}
+  {% if sections.fee_collection %}<span class="sep"></span><span class="item">Fee collection <b>{{ stats.fee_collection_percent|default:"0" }}%</b></span>{% endif %}
+</div>
+
+<div class="dash-kpis">
+  {% for k in kpi_cards %}
+  <div class="kpi-card">
+    <div class="kpi-top">
+      <div class="kpi-icon"
+        {% if k.icon == "students" %}style="background:var(--green-soft);"
+        {% elif k.icon == "staff" %}style="background:var(--gold-soft);"
+        {% elif k.icon == "hod" %}style="background:var(--gold-soft);"
+        {% elif k.icon == "advisor" %}style="background:var(--amber-soft);"
+        {% elif k.icon == "office_admins" %}style="background:var(--red-soft);"
+        {% elif k.icon == "fee_percent" %}style="background:var(--green-soft);"
+        {% elif k.icon == "paid" %}style="background:var(--green-soft);"
+        {% elif k.icon == "pending" %}style="background:var(--red-soft);"
+        {% elif k.icon == "subjects" %}style="background:var(--amber-soft);"
+        {% elif k.icon == "classrooms" %}style="background:var(--gold-soft);"
+        {% elif k.icon == "periods" %}style="background:var(--amber-soft);"
+        {% else %}style="background:var(--cream);"{% endif %}>
+        {% if k.icon == "students" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--secondary-light)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
+        {% elif k.icon == "staff" or k.icon == "hod" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
+        {% elif k.icon == "advisor" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>
+        {% elif k.icon == "office_admins" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        {% elif k.icon == "fee_percent" or k.icon == "paid" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--secondary-light)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/></svg>
+        {% elif k.icon == "pending" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg>
+        {% elif k.icon == "subjects" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+        {% elif k.icon == "classrooms" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8"><path d="M3 21h18"/><path d="M5 21V7h14v14"/><path d="M9 7V3h6v4"/></svg>
+        {% elif k.icon == "periods" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+        {% else %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--ink-500)" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg>
+        {% endif %}
+      </div>
+    </div>
+    <div class="kpi-num">{{ k.value }}</div>
+    <div class="kpi-label">{{ k.label }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if sections.departments_overview or sections.quick_actions %}
+<div class="dash-grid-2">
+  {% if sections.departments_overview %}
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Students by Department &amp; Year</h2>
+      <a href="{% url 'department-list' %}" class="view-all">View all departments →</a>
+    </div>
+    <div class="panel-body">
+      {% for dept in departments %}
+      <div class="dept-row">
+        <div class="dept-row-head">
+          <div><span class="d-name">{{ dept.name }}</span> <span class="d-code">{{ dept.code }}</span></div>
+          <div class="d-count">{{ dept.student_count }} students · {{ dept.staff_count }} staff</div>
+        </div>
+        <div class="year-bars">
+          {% for y in dept.year_breakdown %}
+          <div class="year-bar"><div class="yn">{{ y.count }}</div><div class="yl">Year {{ y.year }}</div></div>
+          {% endfor %}
+        </div>
+      </div>
+      {% empty %}
+      <p class="empty-note">No departments added yet.</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if sections.quick_actions %}
+  <section class="panel">
+    <div class="panel-head"><h2>Quick Actions</h2></div>
+    <div class="panel-body">
+      {% if dashboard_role == "master_admin" %}
+      <a href="{% url 'college-office-admin' %}" class="qa-btn"><div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="M20 8v6M17 11h6"/></svg></div><div>Create Office Admin<span class="desc">Front-office &amp; admissions access</span></div></a>
+      <a href="{% url 'college-staff' %}" class="qa-btn"><div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="M20 8v6M17 11h6"/></svg></div><div>Create Staff Admin<span class="desc">HOD, Advisor or Staff access</span></div></a>
+      <a href="{% url 'department-list' %}" class="qa-btn"><div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 9v6M9 12h6"/></svg></div><div>Add Department<span class="desc">Create a new department or branch</span></div></a>
+      <a href="{% url 'college-students' %}" class="qa-btn"><div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg></div><div>Enrol Student<span class="desc">Register a new student profile</span></div></a>
+      {% elif dashboard_role == "office_admin" %}
+      <a href="{% url 'college-students' %}" class="qa-btn"><div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg></div><div>Enrol Student<span class="desc">Register a new student profile</span></div></a>
+      <a href="{% url 'department-list' %}" class="qa-btn"><div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 9v6M9 12h6"/></svg></div><div>Add Department<span class="desc">Create a new department or branch</span></div></a>
+      {% elif dashboard_role == "staff_admin" and staff_role == "hod" %}
+      <a href="{% url 'college-subjects' %}" class="qa-btn"><div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg></div><div>Add / Assign Subject<span class="desc">For your department</span></div></a>
+      <a href="{% url 'college-classrooms' %}" class="qa-btn"><div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M3 21h18"/><path d="M5 21V7h14v14"/><path d="M9 7V3h6v4"/></svg></div><div>Assign Staff to Classroom<span class="desc">Within your department</span></div></a>
+      <a href="{% url 'classroom-timetable' %}" class="qa-btn"><div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg></div><div>Manage Timetable<span class="desc">For your department's classrooms</span></div></a>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if sections.staff_directory or sections.fee_collection %}
+<div class="dash-grid-2">
+  {% if sections.staff_directory %}
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Staff Directory</h2>
+      <a href="{% url 'college-staff' %}" class="view-all">View all staff →</a>
+    </div>
+    <div class="panel-body">
+      {% for s in staff_directory %}
+      <div class="dir-item">
+        <div class="dir-avatar">{{ s.name|slice:":2"|upper }}</div>
+        <div class="dir-info">
+          <div class="dn">{{ s.name }}</div>
+          <div class="dm">{{ s.staff_role }}<span class="sep-dot">·</span>{{ s.department|default:"Unassigned" }}<span class="sep-dot">·</span>{{ s.designation }}</div>
+        </div>
+        <div class="dir-id">{{ s.employee_id }}</div>
+        <span class="pill {{ s.status|default:'active' }}">{{ s.status|default:"Active" }}</span>
+      </div>
+      {% empty %}
+      <p class="empty-note">No staff members added yet.</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if sections.fee_collection %}
+  <section class="panel">
+    <div class="panel-head"><h2>Fee Collection</h2></div>
+    <div class="panel-body">
+      <div class="fee-collect">
+        <div class="fee-ring" style="--pct:{{ stats.fee_collection_percent|default:'0' }};">
+          <div class="hole">{{ stats.fee_collection_percent|default:"0" }}%</div>
+        </div>
+        <div class="fee-copy">
+          <div class="ft">{{ stats.fee_paid_count|default:"0" }} students paid</div>
+          <div class="fs">{{ stats.fee_pending_count|default:"0" }} pending this term</div>
+        </div>
+      </div>
+      {% for f in fee_pending %}
+      <div class="fee-row">
+        <div><div class="fn">{{ f.name }}</div><div class="fd">{{ f.admission_number }} · {{ f.department }} · Year {{ f.year }}</div></div>
+        <div class="fee-amt">₹{{ f.amount_due }}</div>
+      </div>
+      {% empty %}
+      <p class="empty-note">No pending dues right now.</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if sections.fee_by_department or sections.recent_payments or sections.recent_batches %}
+<div class="dash-grid-3">
+  {% if sections.fee_by_department %}
+  <section class="panel">
+    <div class="panel-head"><h2>Fee Payment by Department</h2><a href="{% url 'admin-fee-transactions-page' %}" class="view-all">All transactions →</a></div>
+    <div class="panel-body">
+      {% for d in fee_by_department %}
+      <div class="dept-fee-row">
+        <div><div class="dfn">{{ d.department }}</div><div class="dfs">{{ d.paid_students }} of {{ d.total_students }} students paid</div></div>
+        <div class="dept-fee-amt">₹{{ d.collected_amount }}</div>
+      </div>
+      {% empty %}<p class="empty-note">No invoices raised yet.</p>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if sections.recent_payments %}
+  <section class="panel">
+    <div class="panel-head"><h2>Recent Payments</h2><a href="{% url 'admin-fee-transactions-page' %}" class="view-all">View all →</a></div>
+    <div class="panel-body">
+      {% for p in last_payments %}
+      <div class="pay-row">
+        <div><div class="pn">{{ p.student_name }}</div><div class="pd">{{ p.admission_number }} · {{ p.payment_mode }} · {{ p.receipt_number }}</div></div>
+        <div style="text-align:right;"><div class="pay-amt">₹{{ p.amount }}</div><div class="pd">{{ p.paid_at|date:"d M, h:i A" }}</div></div>
+      </div>
+      {% empty %}<p class="empty-note">No payments recorded yet.</p>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- {% if sections.recent_batches %}
+  <section class="panel">
+    <div class="panel-head"><h2>Recent Settlement Batches</h2><a href="{% url 'admin-settlement-batches-page' %}" class="view-all">View all →</a></div>
+    <div class="panel-body">
+      {% for b in last_batches %}
+      <div class="batch-row">
+        <div><div class="bn">{{ b.batch_number }}</div><div class="bd">{{ b.total_transactions }} txns · ₹{{ b.total_amount }}{% if b.settlement_date %} · {{ b.settlement_date|date:"d M Y" }}{% endif %}</div></div>
+        <span class="batch-pill {{ b.status_raw }}">{{ b.status }}</span>
+      </div>
+      {% empty %}<p class="empty-note">No settlement batches run yet.</p>{% endfor %}
+    </div>
+  </section>
+  {% endif %} -->
+</div>
+{% endif %}
+
+{% if sections.own_department %}
+<div class="dash-grid-2">
+  <section class="panel">
+    <div class="panel-head"><h2>My Department — {{ own_department.name }}</h2></div>
+    <div class="panel-body">
+      <div class="dept-row">
+        <div class="dept-row-head"><div><span class="d-name">{{ own_department.name }}</span> <span class="d-code">{{ own_department.code }}</span></div>
+        <div class="d-count">{{ own_department.student_count }} students · {{ own_department.staff_count }} staff</div></div>
+        <div class="year-bars">
+          {% for y in own_department.year_breakdown %}
+          <div class="year-bar"><div class="yn">{{ y.count }}</div><div class="yl">Year {{ y.year }}</div></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if sections.attendance_overview %}
+  <section class="panel">
+    <div class="panel-head"><h2>Today's Attendance — By Period</h2></div>
+    <div class="panel-body">
+      {% for row in attendance_overview %}
+      <div class="period-row">
+        <div class="p-time">P{{ row.period_number }} · {{ row.start_time|time:"h:i A" }}</div>
+        <div style="flex:1;margin:0 10px;"><div class="cn">{{ row.subject }}</div><div class="prs">{{ row.classroom }} · {{ row.teacher }}</div></div>
+        <span class="attendance-pill {% if row.attendance_taken %}done{% else %}pending{% endif %}">{% if row.attendance_taken %}Taken{% else %}Pending{% endif %}</span>
+      </div>
+      {% empty %}<p class="empty-note">No periods scheduled today.</p>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if sections.own_class %}
+<div class="dash-grid-2">
+  <section class="panel">
+    <div class="panel-head"><h2>My Class — {{ own_class.department }}, Year {{ own_class.year }}</h2></div>
+    <div class="panel-body">
+      {% for s in own_class.students %}
+      <div class="class-row">
+        <div><div class="cn">{{ s.name }}</div><div class="cd">{{ s.admission_number }}{% if s.roll_number %} · Roll {{ s.roll_number }}{% endif %}{% if s.section %} · Sec {{ s.section }}{% endif %}</div></div>
+      </div>
+      {% empty %}<p class="empty-note">No students assigned to this class yet.</p>{% endfor %}
+    </div>
+  </section>
+
+  {% if sections.take_attendance %}
+  <section class="panel">
+    <div class="panel-head"><h2>Today's Periods</h2></div>
+    <div class="panel-body">
+      {% for row in today_timetable %}
+      <div class="period-row">
+        <div class="p-time">P{{ row.period_number }} · {{ row.start_time|time:"h:i A" }}</div>
+        <div style="flex:1;margin:0 10px;"><div class="cn">{{ row.subject }}</div><div class="prs">{{ row.classroom }}</div></div>
+        {% if row.attendance_taken %}
+        <span class="attendance-pill done">Taken</span>
+        {% else %}
+        <a href="{% url 'classroom-attendance-select' %}" class="take-attendance-link">Take attendance →</a>
+        {% endif %}
+      </div>
+      {% empty %}<p class="empty-note">No periods scheduled today.</p>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if sections.today_timetable and not sections.own_department and not sections.own_class %}
+<div class="dash-grid-2">
+  <section class="panel">
+    <div class="panel-head"><h2>Today's Periods</h2></div>
+    <div class="panel-body">
+      {% for row in today_timetable %}
+      <div class="period-row">
+        <div class="p-time">P{{ row.period_number }} · {{ row.start_time|time:"h:i A" }}</div>
+        <div style="flex:1;margin:0 10px;"><div class="cn">{{ row.subject }}</div><div class="prs">{{ row.classroom }}</div></div>
+        {% if row.attendance_taken %}
+        <span class="attendance-pill done">Taken</span>
+        {% else %}
+        <a href="{% url 'classroom-attendance-select' %}" class="take-attendance-link">Take attendance →</a>
+        {% endif %}
+      </div>
+      {% empty %}<p class="empty-note">No periods scheduled today.</p>{% endfor %}
+    </div>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · My Profile{% endblock %}
+{% block breadcrumb_label %}My Profile{% endblock %}
+
+{% block tab_css %}
+<style>
+  .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+  .profile-grid .col-span-2 { grid-column: 1 / -1; }
+  .pf-field { margin-bottom: 16px; }
+  .pf-field label {
+    display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--ink-500); margin-bottom: 4px;
+  }
+  .pf-field .val { font-size: 13.5px; color: var(--ink-900); font-weight: 500; }
+
+  .pf-hero { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+  .pf-avatar {
+    width: 56px; height: 56px; border-radius: 50%; background: var(--primary-dark); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; flex-shrink: 0;
+  }
+  .pf-hero .nm { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
+  .pf-hero .sub { font-size: 12.5px; color: var(--ink-500); margin-top: 2px; }
+  .role-pill {
+    display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; padding: 3px 9px; border-radius: 999px;
+    background: var(--gold-soft); color: var(--gold); margin-left: 8px; vertical-align: middle;
+  }
+  .panel-head .edit-link { font-size: 12px; font-weight: 600; color: var(--gold); text-decoration: none; }
+  @media (max-width: 640px) { .profile-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div><h1>My Profile</h1></div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>Personal Details</h2>
+    <a href="{% url 'admin-settings' %}" class="edit-link">Edit in Settings →</a>
+  </div>
+  <div class="panel-body">
+
+    <div class="pf-hero">
+      <div class="pf-avatar">{{ profile.full_name|slice:":2"|upper }}</div>
+      <div>
+        <div class="nm">{{ profile.full_name }}<span class="role-pill">{{ profile.staff_role|default:profile.role }}</span></div>
+        <div class="sub">{{ profile.college_name }}</div>
+      </div>
+    </div>
+
+    <div class="profile-grid">
+      <div class="pf-field"><label>Full Name</label><div class="val">{{ profile.full_name }}</div></div>
+      <div class="pf-field"><label>Employee ID</label><div class="val">{{ profile.employee_id|default:"—" }}</div></div>
+      <div class="pf-field"><label>Email</label><div class="val">{{ profile.email }}</div></div>
+      <div class="pf-field"><label>Mobile Number</label><div class="val">{{ profile.mobile_number|default:"—" }}</div></div>
+      <div class="pf-field"><label>College</label><div class="val">{{ profile.college_name }}</div></div>
+      <div class="pf-field"><label>Account Role</label><div class="val">{{ profile.role }}</div></div>
+      <div class="pf-field"><label>Department</label><div class="val">{{ profile.department_name|default:"—" }}</div></div>
+      <div class="pf-field"><label>Status</label><div class="val">{{ profile.status }}</div></div>
+      <div class="pf-field"><label>Date of Birth</label><div class="val">{{ profile.date_of_birth|default:"—" }}</div></div>
+      <div class="pf-field"><label>Blood Group</label><div class="val">{{ profile.blood_group|default:"—" }}</div></div>
+      <div class="pf-field"><label>Emergency Contact</label><div class="val">{{ profile.emergency_contact_number|default:"—" }}</div></div>
+      <div class="pf-field"><label>Years of Experience</label><div class="val">{% if profile.experience_years %}{{ profile.experience_years }} years{% else %}—{% endif %}</div></div>
+      <div class="pf-field"><label>Joined</label><div class="val">{{ profile.joined_at|date:"d M Y" }}</div></div>
+      <div class="pf-field col-span-2"><label>Address</label><div class="val">{{ profile.address|default:"—" }}</div></div>
+    </div>
+  </div>
+</div>
+
+{% if profile.is_staff_profile %}
+<div class="panel" style="margin-top: 15px;">
+  <div class="panel-head"><h2>Staff Details</h2></div>
+  <div class="panel-body">
+    <div class="profile-grid">
+      <div class="pf-field"><label>Staff Role</label><div class="val">{{ profile.staff_role }}</div></div>
+      <div class="pf-field"><label>Designation</label><div class="val">{{ profile.designation|default:"—" }}</div></div>
+      {% if profile.staff_role_raw == "class_advisor" %}
+      <div class="pf-field"><label>Class Advisor For</label><div class="val">{% if profile.advisor_year %}Year {{ profile.advisor_year }}{% else %}—{% endif %}</div></div>
+      {% endif %}
+      <div class="pf-field"><label>Joining Date</label><div class="val">{{ profile.joining_date|default:"—" }}</div></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

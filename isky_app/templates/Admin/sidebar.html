@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<style>
+  /* Auto-number the sidebar sections that are actually visible (no gaps for hidden groups) */
+  .dash-nav { counter-reset: navsec; }
+  .logout-modal-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(20, 12, 35, .55);
+  backdrop-filter: blur(2px);
+  display: none; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.logout-modal-overlay.open { display: flex; animation: lmFade .15s ease-out; }
+.logout-modal {
+  background: #fff; width: 100%; max-width: 380px;
+  border-radius: 14px; padding: 28px 24px 22px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
+  animation: lmPop .18s ease-out;
+}
+.logout-modal-icon {
+  width: 52px; height: 52px; margin: 0 auto 14px;
+  border-radius: 50%; background: #fdecec; color: #d64545;
+  display: flex; align-items: center; justify-content: center;
+}
+.logout-modal-icon svg { width: 26px; height: 26px; }
+.logout-modal h3 { margin: 0 0 6px; font-size: 18px; color: #33234a; }
+.logout-modal p  { margin: 0 0 20px; font-size: 14px; color: #6b6478; }
+.logout-modal-actions { display: flex; gap: 10px; }
+.logout-modal-actions > * {
+  flex: 1; padding: 10px 14px; border-radius: 8px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  text-decoration: none; text-align: center; border: 1px solid transparent;
+}
+.logout-btn-cancel  { background: #f1eef6; color: #33234a; }
+.logout-btn-cancel:hover  { background: #e6e1ef; }
+.logout-btn-confirm { background: #d64545; color: #fff; }
+.logout-btn-confirm:hover { background: #bd3636; }
+
+@keyframes lmFade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes lmPop  { from { opacity: 0; transform: scale(.95) } to { opacity: 1; transform: scale(1) } }
+</style>
+{% block tab_css %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+<div class="dash-app" id="dashApp">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="dash-sidebar" id="dashSidebar">
+    <div class="dash-brand">
+      <div class="dash-brand-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#33234a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="name">ISKY</div>
+        <div class="sub">ERP PORTAL</div>
+      </div>
+      <button type="button" class="dash-sidebar-close" id="dashSidebarClose" aria-label="Close menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <nav class="dash-nav" id="dashNav">
+
+      {# ---------------- Dashboard ---------------- #}
+      {% if nav_access.dashboard %}
+      <a href="{% url 'master-admin-dashboard' %}" class="{% if request.resolver_match.url_name == 'master-admin-dashboard' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg> Dashboard
+      </a>
+      {% endif %}
+
+      {# ---------------- 1. Academic Management ---------------- #}
+      {% if nav_access.students or nav_access.departments or nav_access.subjects or nav_access.classrooms or nav_access.timetable or nav_access.attendance or nav_access.promotion %}
+      <div class="nav-label numbered">Academic Management</div>
+      {% endif %}
+
+      {% if nav_access.departments %}
+      <a href="{% url 'department-list' %}" class="{% if request.resolver_match.url_name == 'department-list' or request.resolver_match.url_name == 'department-create' or request.resolver_match.url_name == 'department-detail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg> Departments
+      </a>
+      {% endif %}
+
+      {% if nav_access.students %}
+      <a href="{% url 'college-students' %}" class="{% if request.resolver_match.url_name == 'college-students' or request.resolver_match.url_name == 'create-student' or  request.resolver_match.url_name == 'student-detail' or request.resolver_match.url_name == 'bulk-create-student' %} active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg> Students
+        {% if not can_edit_students %}<span class="nav-badge">View only</span>{% endif %}
+      </a>
+      {% endif %}
+
+
+      {% if nav_access.subjects %}
+      <a href="{% url 'college-subjects' %}" class="{% if request.resolver_match.url_name == 'college-subjects' or request.resolver_match.url_name == 'create-subject' or request.resolver_match.url_name == 'subject-detail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg> Subjects
+      </a>
+      {% endif %}
+
+      {% if nav_access.classrooms %}
+      <a href="{% url 'college-classrooms' %}" class="{% if request.resolver_match.url_name == 'college-classrooms' or request.resolver_match.url_name == 'create-classroom' or request.resolver_match.url_name == 'classroom-detail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7h14v14"/><path d="M9 7V3h6v4"/><path d="M8 11h2M14 11h2M8 15h2M14 15h2"/></svg> Classrooms
+      </a>
+      {% endif %}
+
+      {% if nav_access.timetable %}
+      <a href="{% url 'classroom-timetable' %}" class="{% if request.resolver_match.url_name == 'classroom-timetable' or request.resolver_match.url_name == 'create-timetable-slot' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/></svg> Timetable
+      </a>
+      {% endif %}
+
+      {% if nav_access.attendance %}
+      <a href="{% url 'classroom-attendance-select' %}" class="{% if request.resolver_match.url_name == 'classroom-attendance-select' or request.resolver_match.url_name == 'classroom-take-attendance' or request.resolver_match.url_name == 'enroll-students' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m7 12 3 3 7-7"/></svg> Attendance
+      </a>
+      {% endif %}
+
+      {# Not in your list, kept here so the page stays reachable #}
+      {% if nav_access.promotion %}
+      <a href="{% url 'student-promotion' %}" class="{% if request.resolver_match.url_name == 'student-promotion' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 19h14"/></svg> Promote Students
+      </a>
+      {% endif %}
+
+      {# ---------------- 4. User Management ---------------- #}
+      {% if nav_access.office_admins or nav_access.staff_admins %}
+      <div class="nav-label numbered">User Management</div>
+      {% endif %}
+
+      {% if nav_access.office_admins %}
+      <a href="{% url 'college-office-admin' %}" class="{% if request.resolver_match.url_name == 'college-office-admin' or request.resolver_match.url_name == 'create-office-admin' or request.resolver_match.url_name == 'office-admin-detail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M2 13h20"/></svg> Office Admins
+      </a>
+      {% endif %}
+
+      {% if nav_access.staff_admins %}
+      <a href="{% url 'college-staff' %}" class="{% if request.resolver_match.url_name == 'college-staff' or request.resolver_match.url_name == 'create-staff' or request.resolver_match.url_name == 'staff-detail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Staffs
+      </a>
+      {% endif %}
+
+      {# ---------------- 2. Fee Management ---------------- #}
+      {% if nav_access.fee_structure or nav_access.assign_fee_structure or nav_access.fee_transactions or nav_access.student_fees %}
+      <div class="nav-label numbered">Fee Management</div>
+      {% endif %}
+
+      {% if nav_access.fee_structure %}
+      <a href="{% url 'fee-management' %}" class="{% if request.resolver_match.url_name == 'fee-management' or request.resolver_match.url_name == 'fee-student-detail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 12v6M9 15h6"/></svg> Student Fee
+      </a>
+      {% endif %}
+
+
+      {% if nav_access.fee_structure %}
+      <a href="{% url 'fee-structure-list-page' %}" class="{% if request.resolver_match.url_name == 'fee-structure-list-page' or request.resolver_match.url_name == 'create-fee-structure-page' or request.resolver_match.url_name == 'fee-structure-detail-page' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 12v6M9 15h6"/></svg> Create Fee
+      </a>
+      {% endif %}
+
+
+      {% if nav_access.assign_fee_structure %}
+      <a href="{% url 'assign-fee-structure-page' %}" class="{% if request.resolver_match.url_name == 'assign-fee-structure-page' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg> Assign Fee
+      </a>
+      {% endif %}
+
+      {% if nav_access.fee_structure %}
+      <a href="{% url 'bulk-fee-invoices' %}" class="{% if request.resolver_match.url_name == 'bulk-fee-invoices' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg> Assign Other Fees
+      </a>
+      {% endif %}
+
+      {% if nav_access.fee_transactions %}
+      <a href="{% url 'invoice-history-page' %}" class="{% if request.resolver_match.url_name == 'invoice-history-page' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 3"/></svg> Assigned Fee History
+      </a>
+      {% endif %}
+
+      {# New: the fee list / detail pages (paid / partial / unpaid) #}
+      {% if nav_access.student_fees %}
+      <a href="{% url 'fee-management' %}" class="{% if request.resolver_match.url_name == 'fee-management' or request.resolver_match.url_name == 'fee-student-detail' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg> Student Fee Management
+      </a>
+      {% endif %}
+
+      {# ---------------- 3. Payments & Finance ---------------- #}
+      {% if nav_access.offline_history or nav_access.fee_transactions or nav_access.settlement_batches %}
+      <div class="nav-label numbered">Payments &amp; Finance</div>
+      {% endif %}
+
+      {# Was unguarded before; now uses offline_history, falling back to fee_transactions #}
+      {% if nav_access.fee_transactions %}
+      <a href="{% url 'admin-fee-transactions-page' %}" class="{% if request.resolver_match.url_name == 'admin-fee-transactions-page' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg> Online Payments
+      </a>
+      {% endif %}
+
+      {% if nav_access.offline_history or nav_access.fee_transactions %}
+      <a href="{% url 'offline-collection-history-page' %}" class="{% if request.resolver_match.url_name == 'offline-collection-history-page' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg> Offline Payments
+      </a>
+      {% endif %}
+
+      <!-- {% if nav_access.settlement_batches %}
+      <a href="{% url 'admin-settlement-batches-page' %}" class="{% if request.resolver_match.url_name == 'admin-settlement-batches-page' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Settlement Batches
+      </a>
+      {% endif %} -->
+
+      {# ---------------- 5. Account & Settings ---------------- #}
+      {% if nav_access.settings %}
+      <div class="nav-label numbered">Account &amp; Settings</div>
+      <a href="{% url 'admin-profile' %}" class="{% if request.resolver_match.url_name == 'admin-profile' or request.resolver_match.url_name == 'admin-settings' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg> Profile
+      </a>
+      {% endif %}
+    </nav>
+
+    <div class="dash-sidebar-foot">
+      <div class="dash-admin-chip">
+        <div class="dash-admin-avatar">{{ user_profile.user.get_full_name|default:"Admin"|slice:":2"|upper }}</div>
+        <div class="who">
+          <div class="n">{{ user_profile.user.get_full_name|default:"Admin" }}</div>
+          <div class="r">
+            {% if user_role == "master_admin" %}Master Admin
+            {% elif user_role == "office_admin" %}Office Admin
+            {% elif user_role == "finance_admin" %}Finance Admin
+            {% elif user_role == "staff_admin" and staff_role == "hod" %}HOD
+            {% elif user_role == "staff_admin" and staff_role == "class_advisor" %}Class Advisor
+            {% elif user_role == "staff_admin" and staff_role == "staff" %}Staff
+            {% else %}{{ user_role|default:"Admin" }}
+            {% endif %}
+            · {{ user_profile.employee_or_student_id|default:"EMP-0001" }}
+          </div>
+        </div>
+      </div>
+      <a href="{% url 'college-admin-logout' %}" class="dash-logout" data-logout>Log out</a>
+      <div class="brand-text" style="text-align:center;padding-top: 10px;">
+        <div class="sub" >Version 1.0 Beta 4</div>
+      </div>
+    </div>
+  </aside>
+  <div class="dash-sidebar-overlay" id="dashSidebarOverlay"></div>
+
+  <!-- ============ LOGOUT CONFIRM MODAL ============ -->
+<div class="logout-modal-overlay" id="logoutModal" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle" aria-hidden="true">
+  <div class="logout-modal">
+    <div class="logout-modal-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+    </div>
+    <h3 id="logoutModalTitle">Log out?</h3>
+    <p>Are you sure you want to log out of the ISKY ERP Portal?</p>
+    <div class="logout-modal-actions">
+      <button type="button" class="logout-btn-cancel" id="logoutCancel">Cancel</button>
+      <a href="{% url 'college-admin-logout' %}" class="logout-btn-confirm" id="logoutConfirm">Yes, log out</a>
+    </div>
+  </div>
+</div>
+
+  <!-- ============ MAIN ============ -->
+
+  <main class="dash-main">
+
+    {% if messages %}
+    <div class="messages-container" id="msgContainer">
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}" role="alert">
+        <span class="alert-text">{{ message }}</span>
+        <button type="button" class="alert-close" aria-label="Dismiss">&times;</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <!-- Navbar: shared across every tab -->
+    <div class="dash-navbar">
+      <div class="dash-navbar-left">
+        <button type="button" class="dash-menu-btn" id="dashMenuBtn" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <nav class="dash-breadcrumb" aria-label="Breadcrumb">
+          {% block breadcrumb %}
+          <a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+          <span class="crumb-sep">/</span>
+          <span class="crumb-current">{% block breadcrumb_label %}Dashboard{% endblock %}</span>
+          {% endblock %}
+        </nav>
+      </div>
+
+
+      <div class="dash-navbar-right">
+        {% comment %} <form class="dash-search" role="search" method="get" action="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" name="q" placeholder="Search students, staff…">
+        </form> {% endcomment %}
+        <button type="button" class="dash-search-btn" id="dashSearchToggle" aria-label="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+
+        <button type="button" class="dash-bell" id="dashBell" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+          {% if notifications %}<span class="dot"></span>{% endif %}
+        </button>
+        <div class="dash-notif-panel" id="dashNotifPanel">
+          <div class="np-head">Notifications</div>
+          {% for note in notifications %}
+          <div class="dash-notif-item {% if not note.unread %}read{% endif %}">
+            <span class="n-dot"></span>
+            <div><div class="n-title">{{ note.title }}</div><div class="n-time">{{ note.time }}</div></div>
+          </div>
+          {% empty %}
+          <p class="empty-note">You're all caught up.</p>
+          {% endfor %}
+        </div>
+
+        <div class="dash-navbar-user" id="dashUserBtn">
+          <div class="av">{{ user_profile.user.get_full_name|default:"Admin"|slice:":2"|upper }}</div>
+          <div class="who">
+            <div class="n">{{ user_profile.user.get_full_name|default:"Admin" }}</div>
+            <div class="r">
+              {% if user_role == "master_admin" %}Master Admin
+              {% elif user_role == "office_admin" %}Office Admin
+              {% elif user_role == "finance_admin" %}Finance Admin
+              {% elif user_role == "staff_admin" and staff_role == "hod" %}HOD
+              {% elif user_role == "staff_admin" and staff_role == "class_advisor" %}Class Advisor
+              {% elif user_role == "staff_admin" and staff_role == "staff" %}Staff
+              {% else %}{{ user_role|default:"Admin" }}
+              {% endif %}
+            </div>
+          </div>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          <div class="dash-user-menu" id="dashUserMenu">
+            <a href="{% url 'admin-profile' %}">My profile</a>
+            {% if nav_access.settings %}<a href="{% url 'admin-settings' %}">Account settings</a>{% endif %}
+            <a href="{% url 'college-admin-logout' %}" data-logout>Log out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TAB CONTENT — each tab template fills this ============ -->
+    {% block main_content %}{% endblock %}
+
+  </main>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    const app = document.getElementById('dashApp');
+
+    const openBtn = document.getElementById('dashMenuBtn');
+    const closeBtn = document.getElementById('dashSidebarClose');
+    const overlay = document.getElementById('dashSidebarOverlay');
+    openBtn.addEventListener('click', () => app.classList.add('sidebar-open'));
+    closeBtn.addEventListener('click', () => app.classList.remove('sidebar-open'));
+    overlay.addEventListener('click', () => app.classList.remove('sidebar-open'));
+
+    const searchToggle = document.getElementById('dashSearchToggle');
+    const searchBox = document.querySelector('.dash-search');
+    searchToggle.addEventListener('click', () => {
+      if (!searchBox) return;   // the search form is commented out above
+      const showing = getComputedStyle(searchBox).display !== 'none';
+      searchBox.style.display = showing ? 'none' : 'flex';
+      if (!showing) searchBox.querySelector('input').focus();
+    });
+
+    const bell = document.getElementById('dashBell');
+    const notifPanel = document.getElementById('dashNotifPanel');
+    const userBtn = document.getElementById('dashUserBtn');
+    const userMenu = document.getElementById('dashUserMenu');
+
+    bell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      notifPanel.classList.toggle('open');
+      userMenu.classList.remove('open');
+    });
+    userBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      userMenu.classList.toggle('open');
+      notifPanel.classList.remove('open');
+    });
+    document.addEventListener('click', () => {
+      notifPanel.classList.remove('open');
+      userMenu.classList.remove('open');
+    });
+
+    document.querySelectorAll('#msgContainer .alert').forEach(function (el) {
+      function dismiss() {
+        el.classList.add('hide');
+        setTimeout(function () { el.remove(); }, 300);
+      }
+      el.querySelector('.alert-close').addEventListener('click', dismiss);
+      setTimeout(dismiss, 5000);
+    });
+
+    // ---- Logout confirmation ----
+const logoutModal = document.getElementById('logoutModal');
+const logoutCancel = document.getElementById('logoutCancel');
+const logoutConfirm = document.getElementById('logoutConfirm');
+
+function openLogoutModal() {
+  logoutModal.classList.add('open');
+  logoutModal.setAttribute('aria-hidden', 'false');
+  logoutCancel.focus();
+}
+function closeLogoutModal() {
+  logoutModal.classList.remove('open');
+  logoutModal.setAttribute('aria-hidden', 'true');
+}
+
+document.querySelectorAll('[data-logout]').forEach(function (link) {
+  link.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();            // keeps the user dropdown logic from interfering
+    app.classList.remove('sidebar-open');
+    userMenu.classList.remove('open');
+    openLogoutModal();
+  });
+});
+
+logoutCancel.addEventListener('click', closeLogoutModal);
+logoutModal.addEventListener('click', function (e) {
+  if (e.target === logoutModal) closeLogoutModal();   // click on backdrop
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && logoutModal.classList.contains('open')) closeLogoutModal();
+});
+
+  })();
+  
+</script>
+{% block tab_js %}{% endblock %}
+{% endblock %}

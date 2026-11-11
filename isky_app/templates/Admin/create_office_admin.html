@@ -1,0 +1,224 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Create Office Admin{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'college-office-admin' %}" class="crumb-link">Office Admins</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Create Office Admin</span>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Create Office Admin</h1>
+    <div class="college-line">Grant a new front-office &amp; admissions account access to {{ college.name|default:"your college" }}</div>
+  </div>
+  <a href="{% url 'college-office-admin' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Office Admins
+  </a>
+</div>
+
+<form method="post" action="{% url 'create-office-admin' %}" autocomplete="off">
+  {% csrf_token %}
+  {# college is set server-side in the view, so no hidden college input is needed #}
+
+  <!-- ---------- Personal Details ---------- -->
+  <section class="panel" style="margin-bottom:18px;">
+    <div class="panel-head"><h2>Personal Details</h2></div>
+    <div class="panel-body">
+      <div class="form-grid-2">
+        <div class="field">
+          <label for="oa-first-name">First Name*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+            <input type="text" id="oa-first-name" name="first_name" value="{{ form_data.first_name|default:'' }}" placeholder="e.g. Ananya" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="oa-last-name">Last Name*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+            <input type="text" id="oa-last-name" name="last_name" value="{{ form_data.last_name|default:'' }}" placeholder="e.g. Iyer" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="oa-email">Email Address*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+            <input type="email" id="oa-email" name="email" value="{{ form_data.email|default:'' }}" placeholder="name@college.edu" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="oa-mobile">Mobile Number*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
+            <input type="tel" id="oa-mobile" name="mobile_number" value="{{ form_data.mobile_number|default:'' }}" placeholder="+91 98765 43210" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="oa-dob">Date of Birth*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <input type="date" id="oa-dob" name="date_of_birth" value="{{ form_data.date_of_birth|default:'' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="oa-blood-group">Blood Group*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+            <select id="oa-blood-group" name="blood_group" required>
+              <option value="">Select Blood Group</option>
+              {% for value, label in blood_groups %}
+              <option value="{{ value }}" {% if form_data.blood_group == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="oa-emergency-contact">Emergency Contact Number*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <input type="tel" id="oa-emergency-contact" name="emergency_contact_number" value="{{ form_data.emergency_contact_number|default:'' }}" maxlength="16" placeholder="+91 98765 43210" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="oa-work-experience">Work Experience*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+            <input type="text" id="oa-work-experience" name="work_experience" value="{{ form_data.work_experience|default:'' }}" maxlength="150" placeholder="e.g. 5 years" required>
+          </div>
+        </div>
+
+        <div class="field col-span-2">
+          <label for="oa-address">Address*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            {# No whitespace between the tags, or it becomes part of the value #}
+            <textarea id="oa-address" name="address" rows="3" placeholder="e.g. 123 College Road, Sector 4, City">{{ form_data.address|default:'' }}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- Role & Access ---------- -->
+  <section class="panel" style="margin-bottom:18px;">
+    <div class="panel-head"><h2>Role &amp; Access</h2></div>
+    <div class="panel-body">
+      <div class="form-grid-2">
+        <div class="field">
+          <label for="oa-employee-id">Employee ID*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
+            <input type="text" id="oa-employee-id" name="employee_or_student_id" value="{{ form_data.employee_or_student_id|default:'' }}" placeholder="e.g. OA-0142" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="oa-department">Department Access</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <select id="oa-department" name="department">
+              <option value="all" {% if not form_data.department or form_data.department == 'all' %}selected{% endif %}>All Departments</option>
+              {% for dept in departments %}
+              {# form_data values are strings, so compare against the stringified id #}
+              <option value="{{ dept.id }}" {% if form_data.department == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+              {% endfor %}
+              <option value="none" {% if form_data.department == 'none' %}selected{% endif %}>No Access</option>
+            </select>
+          </div>
+          <p class="field-hint">Leave as "All Departments" for full front-office access.</p>
+        </div>
+
+        <div class="field col-span-2">
+          <label for="oa-designation">Designation</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/></svg>
+            <input type="text" id="oa-designation" name="designation" value="{{ form_data.designation|default:'' }}" placeholder="e.g. Admissions Officer">
+          </div>
+        </div>
+
+        <div class="field col-span-2">
+          <label>Account Status</label>
+          <div class="segmented">
+            <input type="radio" id="oa-status-active" name="status" value="active"
+                   {% if form_data.status != 'inactive' %}checked{% endif %}>
+            <label for="oa-status-active">Active</label>
+            <input type="radio" id="oa-status-inactive" name="status" value="inactive"
+                   {% if form_data.status == 'inactive' %}checked{% endif %}>
+            <label for="oa-status-inactive">Inactive</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- Login Setup (auto password) ---------- -->
+  <section class="panel">
+    <div class="panel-head"><h2>Login Setup</h2></div>
+    <div class="panel-body">
+      <div class="info-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <p>A secure password will be <strong>generated automatically</strong> and emailed to the office admin along with their login details.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="form-actions" style="margin-top:18px;">
+    <a href="{% url 'college-office-admin' %}" class="btn-ghost">Cancel</a>
+    <button type="submit" class="btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Create Office Admin
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block tab_js %}
+<style>
+.input-shell textarea { resize: vertical; min-height: 80px; line-height: 1.5; border: none; padding-top: 10px; width: 100%; box-sizing: border-box; font-family: 'Inter', sans-serif; font-size: 14px; }
+.input-shell:has(textarea) { align-items: flex-start; }
+.input-shell:has(textarea) svg { margin-top: 12px; }
+.field textarea:focus { outline: none !important; box-shadow: none !important; }
+
+/* Auto-password info note */
+.info-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background-color: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 8px;
+  color: #1D4ED8;
+}
+.info-note svg { flex-shrink: 0; margin-top: 1px; }
+.info-note p { margin: 0; font-size: 13.5px; line-height: 1.5; color: #1E3A8A; }
+
+/* Message banners */
+.bulk-result-box { border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+.bulk-result-success { background: #EAFAF3; border: 1px solid #A9E6C8; color: #1C6B45; }
+.bulk-result-errors { background: #FFF5F5; border: 1px solid #FEB2B2; color: #C53030; }
+</style>
+
+<script>
+  (function () {
+    // Prevent selecting a future date of birth
+    const dobInput = document.getElementById('oa-dob');
+    if (dobInput) {
+      dobInput.max = new Date().toISOString().split('T')[0];
+    }
+  })();
+</script>
+{% endblock %}

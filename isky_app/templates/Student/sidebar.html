@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<style>
+  /* Student portal overrides — gold accent instead of admin purple */
+  .dash-sidebar{ --dash-accent: var(--gold, #c6a15b); }
+  .dash-brand-badge{ background: var(--gold); }
+  .dash-nav a.active{
+    background: rgba(198,161,91,0.12);
+    color: var(--gold);
+    border-left: 3px solid var(--gold);
+  }
+  .dash-admin-avatar, .dash-navbar-user .av{
+    background: linear-gradient(155deg, var(--gold), #a67f3c);
+  }
+</style>
+{% block tab_css %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+<div class="dash-app" id="dashApp">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="dash-sidebar" id="dashSidebar">
+    <div class="dash-brand">
+      <div class="dash-brand-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="name">ISKY</div>
+        <div class="sub">STUDENT PORTAL</div>
+      </div>
+      <button type="button" class="dash-sidebar-close" id="dashSidebarClose" aria-label="Close menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <nav class="dash-nav">
+      <a href="{% url 'student-dashboard' %}" class="{% if active_nav == 'dashboard' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg> Dashboard
+      </a>
+      <a href="{% url 'student-attendance' %}" class="{% if active_nav == 'attendance' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m7 12 3 3 7-7"/></svg> Attendance
+      </a>
+      <a href="{% url 'student-timetable' %}" class="{% if active_nav == 'timetable' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/></svg> Timetable
+      </a>
+      <a href="{% url 'student-fee-invoices-page' %}" class="{% if request.resolver_match.url_name == 'student-fee-invoices-page' or request.resolver_match.url_name == 'student-fee-invoice-detail-page' or request.resolver_match.url_name == 'student-payment-summary-page' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg> Fee Invoices
+      </a> 
+
+      <div class="nav-label">Account</div>
+      <a href="{% url 'student-profile' %}" class="{% if active_nav == 'profile' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg> My Profile
+      </a>
+    </nav>
+
+    <div class="dash-sidebar-foot">
+      <div class="dash-admin-chip">
+        <div class="dash-admin-avatar">{{ student.full_name|default:"Student"|slice:":2"|upper }}</div>
+        <div class="who">
+          <div class="n">{{ student.full_name|default:"Student" }}</div>
+          <div class="r">{{ student.admission_number|default:"—" }}</div>
+        </div>
+      </div>
+      <a href="{% url 'student-dashboard' %}" class="dash-logout">Log out</a>
+    </div>
+  </aside>
+  <div class="dash-sidebar-overlay" id="dashSidebarOverlay"></div>
+
+  <!-- ============ MAIN ============ -->
+  <main class="dash-main">
+    <div class="dash-navbar">
+      <div class="dash-navbar-left">
+        <button type="button" class="dash-menu-btn" id="dashMenuBtn" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <nav class="dash-breadcrumb" aria-label="Breadcrumb">
+          {% block breadcrumb %}
+          <a href="{% url 'student-dashboard' %}" class="crumb-link">Home</a>
+          <span class="crumb-sep">/</span>
+          <span class="crumb-current">{% block breadcrumb_label %}Dashboard{% endblock %}</span>
+          {% endblock %}
+        </nav>
+      </div>
+
+      <div class="dash-navbar-right">
+        <div class="dash-navbar-user" id="dashUserBtn">
+          <div class="av">{{ student.full_name|default:"Student"|slice:":2"|upper }}</div>
+          <div class="who">
+            <div class="n">{{ student.full_name|default:"Student" }}</div>
+            <div class="r">{{ student.department_short|default:"—" }} · {{ student.year_display|default:"—" }}</div>
+          </div>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          <div class="dash-user-menu" id="dashUserMenu">
+            <a href="{% url 'student-profile' %}">My profile</a>
+            <a href="{% url 'student-dashboard' %}">Log out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% block main_content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    const app = document.getElementById('dashApp');
+    document.getElementById('dashMenuBtn').addEventListener('click', () => app.classList.add('sidebar-open'));
+    document.getElementById('dashSidebarClose').addEventListener('click', () => app.classList.remove('sidebar-open'));
+    document.getElementById('dashSidebarOverlay').addEventListener('click', () => app.classList.remove('sidebar-open'));
+
+    const userBtn = document.getElementById('dashUserBtn');
+    const userMenu = document.getElementById('dashUserMenu');
+    userBtn.addEventListener('click', (e) => { e.stopPropagation(); userMenu.classList.toggle('open'); });
+    document.addEventListener('click', () => userMenu.classList.remove('open'));
+  })();
+</script>
+{% block tab_js %}{% endblock %}
+{% endblock %}

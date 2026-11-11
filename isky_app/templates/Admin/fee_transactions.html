@@ -1,0 +1,208 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Fee Transactions{% endblock %}
+{% block breadcrumb_label %}Fee Transactions{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Fee Transactions</h1>
+    <div class="college-line">Every recorded fee payment · grouped by department & academic year</div>
+  </div>
+  <a href="{% url 'admin-settlement-batches-page' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+    Settlement Batches
+  </a>
+</div>
+
+<!-- ---------- Filters ---------- -->
+<div class="filter-bar">
+  <form method="get" action="{% url 'admin-fee-transactions-page' %}">
+    <div class="filter-field">
+      <label for="f-department">Department</label>
+      <select id="f-department" name="department" class="filter-control">
+        <option value="">All Departments</option>
+        {% for dept in departments %}
+        <option value="{{ dept.id }}" {% if selected_department == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="f-academic-year">Academic Year</label>
+      <select id="f-academic-year" name="academic_year" class="filter-control">
+        <option value="">All Years</option>
+        {% for ay in academic_years %}
+        <option value="{{ ay }}" {% if selected_academic_year == ay %}selected{% endif %}>{{ ay }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="f-status">Status</label>
+      <select id="f-status" name="status" class="filter-control">
+        <option value="">All Statuses</option>
+        {% for value, display in status_choices %}
+        <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ display }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="f-payment-mode">Payment Mode</label>
+      <select id="f-payment-mode" name="payment_mode" class="filter-control">
+        <option value="">All Modes</option>
+        {% for value, display in payment_mode_choices %}
+        <option value="{{ value }}" {% if selected_payment_mode == value %}selected{% endif %}>{{ display }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-actions">
+      <a href="{% url 'admin-fee-transactions-page' %}" class="btn-clear">Clear</a>
+      <button type="submit" class="btn-apply">Apply Filters</button>
+    </div>
+  </form>
+</div>
+
+<style>
+  .filter-bar {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 18px;
+  }
+  .filter-bar form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 16px;
+  }
+  .filter-bar .filter-field {
+    flex: 1 1 170px;
+    min-width: 150px;
+  }
+  .filter-bar label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-900);
+    margin-bottom: 8px;
+  }
+  .filter-bar .filter-control {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--cream) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7078' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+    background-size: 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 34px 11px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--ink-900);
+    outline: none;
+  }
+  .filter-bar input.filter-control {
+    background-image: none;
+    padding: 11px 14px;
+  }
+  .filter-bar .filter-control:focus {
+    border-color: var(--secondary-light);
+    box-shadow: 0 0 0 3px rgba(10, 107, 102, .12);
+  }
+  .filter-bar .filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .filter-bar .btn-apply {
+    background: var(--secondary-light);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .filter-bar .btn-apply:hover {
+    background: var(--secondary);
+  }
+  .filter-bar .btn-clear {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-500);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .filter-bar .btn-clear:hover {
+    color: var(--ink-900);
+  }
+
+  .pill.success{ background:#dcfce7; color:#15803d; }
+  .pill.pending{ background:#fef3c7; color:#92400e; }
+  .pill.failed{ background:#fee2e2; color:#b91c1c; }
+  .pill.refunded{ background:#f1f5f9; color:#64748b; }
+  .txn-receipt{ font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--ink-500); }
+</style>
+
+<!-- ---------- Results: Department -> Academic Year -> Transactions ---------- -->
+{% for group in department_groups %}
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>{{ group.department.name }}</h2>
+    <span class="field-hint" style="margin:0;">{{ group.transaction_count }} transaction{{ group.transaction_count|pluralize }}</span>
+  </div>
+
+  <div class="panel-body">
+    {% for yg in group.year_groups %}
+      <div class="form-section-title" {% if forloop.first %}style="margin-top:0;"{% endif %}>
+        {{ yg.academic_year }}
+      </div>
+
+      <div class="table-wrap">
+        <table class="simple-table">
+          <thead>
+            <tr><th>Student</th><th>Invoice No.</th><th>Receipt No.</th><th>Amount</th><th>Mode</th><th>Type</th><th>Status</th><th>Paid On</th></tr>
+          </thead>
+          <tbody>
+            {% for txn in yg.transactions %}
+            <tr>
+              <td>
+                <div class="dir-item" style="border:none;padding:0;">
+                  <div class="dir-avatar">{{ txn.student.college_user.user.first_name|slice:":2"|upper }}</div>
+                  <div class="dir-info">
+                    <div class="dn">{{ txn.student.college_user.user.first_name }} {{ txn.student.college_user.user.last_name }}</div>
+                    <div class="dm">{{ txn.student.admission_number }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>{{ txn.invoice.invoice_number }}</td>
+              <td><span class="txn-receipt">{{ txn.receipt_number }}</span></td>
+              <td>₹{{ txn.amount }}</td>
+              <td>{{ txn.get_payment_mode_display }}</td>
+              <td>{{ txn.get_payment_type_display }}</td>
+              <td><span class="pill {{ txn.status }}">{{ txn.get_status_display }}</span></td>
+              <td>{{ txn.paid_at|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% empty %}
+      <p class="empty-note">No transactions match the current filters in this department.</p>
+    {% endfor %}
+  </div>
+</section>
+{% empty %}
+<section class="panel">
+  <div class="panel-body">
+    <p class="empty-note">No transactions found for the selected filters.</p>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

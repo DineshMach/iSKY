@@ -1,0 +1,428 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Create Staff{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'college-staff' %}" class="crumb-link">Staff</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Create Staff</span>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Create Staff</h1>
+    <div class="college-line">Add staff members to {{ college.name|default:"your college" }}</div>
+  </div>
+  <a href="{% url 'college-staff' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Staff
+  </a>
+</div>
+
+<!-- Creation Mode Switcher -->
+<div class="mode-switch-wrapper" style="margin-bottom: 20px;">
+  <div class="segmented" style="max-width: 320px;">
+    <input type="radio" id="mode-single" name="entry_mode" value="single" checked>
+    <label for="mode-single">Single Entry</label>
+    <input type="radio" id="mode-bulk" name="entry_mode" value="bulk">
+    <label for="mode-bulk">Bulk Upload (.xlsx)</label>
+  </div>
+</div>
+
+<!-- ================= SINGLE ENTRY FORM ================= -->
+<form id="singleStaffForm" method="post" action="{% url 'create-staff' %}" autocomplete="off">
+  {% csrf_token %}
+  {# college is set server-side in the view, so no hidden college input is needed #}
+
+  <!-- ---------- Personal Details ---------- -->
+  <section class="panel" style="margin-bottom:18px;">
+    <div class="panel-head"><h2>Personal Details</h2></div>
+    <div class="panel-body">
+      <div class="form-grid-2">
+        <div class="field">
+          <label for="st-first-name">First Name*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+            <input type="text" id="st-first-name" name="first_name" value="{{ form_data.first_name|default:'' }}" placeholder="e.g. John" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="st-last-name">Last Name*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+            <input type="text" id="st-last-name" name="last_name" value="{{ form_data.last_name|default:'' }}" placeholder="e.g. Doe" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="st-email">Email Address*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+            <input type="email" id="st-email" name="email" value="{{ form_data.email|default:'' }}" placeholder="name@college.edu" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="st-mobile">Mobile Number*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
+            <input type="tel" id="st-mobile" name="mobile_number" value="{{ form_data.mobile_number|default:'' }}" placeholder="+91 01234 56789" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="st-dob">Date of Birth*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <input type="date" id="st-dob" name="date_of_birth" value="{{ form_data.date_of_birth|default:'' }}" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="st-blood-group">Blood Group*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+            <select id="st-blood-group" name="blood_group" required>
+              <option value="">Select Blood Group</option>
+              {% for value, label in blood_groups %}
+              <option value="{{ value }}" {% if form_data.blood_group == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field col-span-2">
+          <label for="st-emergency-contact">Emergency Contact Number*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <input type="tel" id="st-emergency-contact" name="emergency_contact_number" value="{{ form_data.emergency_contact_number|default:'' }}" maxlength="16" placeholder="+91 01234 56789" required>
+          </div>
+        </div>
+
+        <div class="field col-span-2">
+          <label for="st-address">Address*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            {# No whitespace between the tags, or it becomes part of the value #}
+            <textarea id="st-address" name="address" rows="3" placeholder="e.g. ABC Road, Sector 4, City" required>{{ form_data.address|default:'' }}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- Role & Department ---------- -->
+  <section class="panel" style="margin-bottom:18px;">
+    <div class="panel-head"><h2>Role &amp; Department</h2></div>
+    <div class="panel-body">
+      <div class="form-grid-2">
+        <div class="field">
+          <label for="st-employee-id">Employee ID*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
+            <input type="text" id="st-employee-id" name="employee_or_student_id" value="{{ form_data.employee_or_student_id|default:'' }}" placeholder="e.g. ST-0142" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="st-department">Department*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <select id="st-department" name="department" required>
+              <option value="" disabled {% if not form_data.department %}selected{% endif %}>Select department</option>
+              {% for dept in departments %}
+              {# form_data values are strings, so compare against the stringified id (works for UUID pks too) #}
+              <option value="{{ dept.id }}" {% if form_data.department == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="st-staff-role">Staff Role*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/></svg>
+            <select id="st-staff-role" name="staff_role" required>
+              <option value="hod" {% if form_data.staff_role == 'hod' %}selected{% endif %}>HOD</option>
+              <option value="class_advisor" {% if form_data.staff_role == 'class_advisor' %}selected{% endif %}>Class Advisor</option>
+              <option value="staff" {% if not form_data.staff_role or form_data.staff_role == 'staff' %}selected{% endif %}>Staff</option>
+            </select>
+          </div>
+          <p class="field-hint" id="stRoleHint"></p>
+        </div>
+
+        <!-- Advisor Year: only shown when the role is Class Advisor -->
+        <div class="field" id="advisorYearField" style="display: none;">
+          <label for="st-advisor-year">Advisor For Year*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <select id="st-advisor-year" name="advisor_year" disabled>
+              <option value="">Select year</option>
+              {% for value, label in year_choices %}
+              <option value="{{ value }}" {% if form_data.advisor_year == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="st-joining-date">Joining Date*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <input type="date" id="st-joining-date" name="joining_date" value="{{ form_data.joining_date|default:'' }}" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="st-designation">Designation*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/></svg>
+            <input type="text" id="st-designation" name="designation" value="{{ form_data.designation|default:'' }}" placeholder="e.g. Assistant Professor" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="st-work-experience">Work Experience</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+            <input type="text" id="st-work-experience" name="work_experience" value="{{ form_data.work_experience|default:'' }}" maxlength="150" placeholder="e.g. 5 years">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- Login Setup (auto password) ---------- -->
+  <section class="panel">
+    <div class="panel-head"><h2>Login Setup</h2></div>
+    <div class="panel-body">
+      <div class="info-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <p>A secure password will be <strong>generated automatically</strong> and emailed to the staff member along with their login details.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="form-actions" style="margin-top: 18px;">
+    <a href="{% url 'college-staff' %}" class="btn-ghost">Cancel</a>
+    <button type="submit" class="btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Create Staff
+    </button>
+  </div>
+</form>
+
+<!-- ================= BULK UPLOAD FORM ================= -->
+<form id="bulkStaffForm" method="post" action="{% url 'bulk-create-staff' %}" enctype="multipart/form-data" style="display: none;">
+  {% csrf_token %}
+  <input name="college" value="{{ college }}" type="hidden">
+
+  <section class="panel" style="margin-bottom:18px;">
+    <div class="panel-head" style="display: flex; justify-content: space-between; align-items: center;">
+      <h2>Bulk Staff Upload</h2>
+      <a href="{% url 'download-staff-sample' %}" class="btn-ghost" style="font-size: 13px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Sample Template (.xlsx)
+      </a>
+    </div>
+    <div class="panel-body">
+      <div class="drop-zone" id="dropZone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="40" height="40"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 12v6"/><path d="M9 15l3-3 3 3"/></svg>
+        <p class="drop-title">Drag and drop your staff spreadsheet here</p>
+        <p class="drop-subtitle">Supports Excel format (.xlsx)</p>
+        <input type="file" id="fileInput" name="file" accept=".xlsx" style="display: none;" required>
+        <button type="button" class="btn-ghost" onclick="document.getElementById('fileInput').click()">Browse File</button>
+        <div id="fileInfo" class="file-info-badge" style="display: none;"></div>
+      </div>
+
+      <div class="upload-instructions" style="margin-top: 20px;">
+        <h4>Instructions:</h4>
+        <ul>
+          <li>Use the sample template to structure your staff records accurately.</li>
+          <li>Passwords are <strong>automatically generated</strong> and emailed to each user with access details.</li>
+          <li><strong>Department Name</strong> must match an existing department in your college.</li>
+          <li><strong>Staff Role</strong> options: <code>hod</code>, <code>class_advisor</code>, or <code>staff</code>.</li>
+          <li><strong>Advisor Year</strong> (<code>1</code>–<code>4</code>) is required when the role is <code>class_advisor</code>, and ignored otherwise.</li>
+          <li><strong>Blood Group</strong> options: <code>A+</code>, <code>A-</code>, <code>B+</code>, <code>B-</code>, <code>O+</code>, <code>O-</code>, <code>AB+</code>, <code>AB-</code>.</li>
+          <li><strong>Date of Birth</strong> and <strong>Joining Date</strong> format should be <code>YYYY-MM-DD</code>.</li>
+          <li><strong>Emergency Contact Number</strong> and <strong>Work Experience</strong> are optional.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <a href="{% url 'college-staff' %}" class="btn-ghost">Cancel</a>
+    <button type="submit" class="btn-primary" id="btnUpload" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload &amp; Process
+    </button>
+  </div>
+</form>
+
+{% endblock %}
+
+{% block tab_js %}
+<style>
+.form-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.field input, .field select, .field textarea { width: 100%; box-sizing: border-box; font-family: 'Inter', sans-serif; font-size: 14px; }
+.input-shell { position: relative; display: flex; align-items: center; }
+.input-shell textarea { resize: vertical; min-height: 80px; line-height: 1.5; border: none; padding-top: 10px; }
+
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: var(--line) !important;
+}
+
+.input-shell:has(textarea) { align-items: flex-start; }
+.input-shell:has(textarea) svg { margin-top: 12px; }
+.col-span-2 { grid-column: 1 / -1; }
+
+/* Message banners */
+.bulk-result-box { border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+.bulk-result-success { background: #EAFAF3; border: 1px solid #A9E6C8; color: #1C6B45; }
+.bulk-result-errors { background: #FFF5F5; border: 1px solid #FEB2B2; color: #C53030; }
+
+/* Auto-password info note */
+.info-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background-color: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 8px;
+  color: #1D4ED8;
+}
+.info-note svg { flex-shrink: 0; margin-top: 1px; }
+.info-note p { margin: 0; font-size: 13.5px; line-height: 1.5; color: #1E3A8A; }
+
+/* Drag & Drop Area Styling */
+.drop-zone {
+  border: 2px dashed #D1D5DB;
+  border-radius: 8px;
+  padding: 32px 20px;
+  text-align: center;
+  background-color: #F9FAFB;
+  transition: border-color 0.2s, background-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.drop-zone.dragover { border-color: #2563EB; background-color: #EFF6FF; }
+.drop-title { font-size: 15px; font-weight: 600; color: #374151; margin: 0; }
+.drop-subtitle { font-size: 13px; color: #6B7280; margin: 0; }
+.file-info-badge { font-weight: 500; font-size: 14px; color: #1D4ED8; background-color: #DBEAFE; padding: 6px 14px; border-radius: 16px; margin-top: 8px; }
+
+.upload-instructions h4 { margin: 0 0 8px 0; font-size: 14px; color: #374151; }
+.upload-instructions ul { margin: 0; padding-left: 20px; font-size: 13px; color: #6B7280; }
+.upload-instructions li { margin-bottom: 4px; }
+
+@media (max-width: 640px) {
+  .form-grid-2 { grid-template-columns: 1fr; }
+  .col-span-2 { grid-column: span 1 / span 1; }
+}
+</style>
+
+<script>
+  (function () {
+    // Mode Switcher Logic
+    const modeSingle = document.getElementById('mode-single');
+    const modeBulk = document.getElementById('mode-bulk');
+    const singleForm = document.getElementById('singleStaffForm');
+    const bulkForm = document.getElementById('bulkStaffForm');
+
+    modeSingle.addEventListener('change', () => {
+      singleForm.style.display = 'block';
+      bulkForm.style.display = 'none';
+    });
+
+    modeBulk.addEventListener('change', () => {
+      singleForm.style.display = 'none';
+      bulkForm.style.display = 'block';
+    });
+
+    // Prevent selecting a future date of birth
+    const dobInput = document.getElementById('st-dob');
+    if (dobInput) {
+      dobInput.max = new Date().toISOString().split('T')[0];
+    }
+
+    // ---------- Role-dependent fields ----------
+    const roleSelect = document.getElementById('st-staff-role');
+    const roleHint = document.getElementById('stRoleHint');
+    const advisorYearField = document.getElementById('advisorYearField');
+    const advisorYearSelect = document.getElementById('st-advisor-year');
+
+    const ROLE_HINTS = {
+      hod: 'A department can only have one active HOD at a time.',
+      class_advisor: 'A department can only have one active class advisor per year.',
+      staff: '',
+    };
+
+    function syncRoleFields() {
+      const role = roleSelect.value;
+      const isAdvisor = role === 'class_advisor';
+
+      roleHint.textContent = ROLE_HINTS[role] || '';
+
+      // Show the year dropdown only for class advisors.
+      // When hidden it is disabled, so it is not submitted with the form.
+      advisorYearField.style.display = isAdvisor ? 'block' : 'none';
+      advisorYearSelect.disabled = !isAdvisor;
+      advisorYearSelect.required = isAdvisor;
+      if (!isAdvisor) advisorYearSelect.value = '';
+    }
+
+    roleSelect.addEventListener('change', syncRoleFields);
+    syncRoleFields(); // run once on load (also handles re-render after a server error)
+
+    // File Drag and Drop Handlers
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const btnUpload = document.getElementById('btnUpload');
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const files = e.dataTransfer.files;
+      if (files.length) {
+        fileInput.files = files;
+        updateFileDisplay(files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) {
+        updateFileDisplay(fileInput.files[0]);
+      }
+    });
+
+    function updateFileDisplay(file) {
+      fileInfo.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+      fileInfo.style.display = 'inline-block';
+      btnUpload.disabled = false;
+    }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,520 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Create Fee Structure{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'create-fee-structure-page' %}" class="crumb-link">Fee Structures</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Create Fee Structure</span>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Create Fee Structure</h1>
+    <div class="college-line">Define a fee plan for a department + year, then add its fee items</div>
+  </div>
+  <a href="{% url 'create-fee-structure-page' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Fee Structures
+  </a>
+</div>
+
+<div id="form-alert" class="form-alert" style="display:none;"></div>
+
+<form id="fee-structure-form" autocomplete="off">
+  <input type="hidden" id="fs-college" value="{{ college }}">
+
+  <!-- STRUCTURE DETAILS -->
+  <section class="panel">
+    <div class="panel-head"><h2>Structure Details</h2></div>
+    <div class="panel-body">
+      <div class="form-grid-2">
+
+        <div class="field">
+          <label for="fs-department">Department</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <select id="fs-department">
+              <option value="">All Departments</option>
+              {% for dept in departments %}
+              <option value="{{ dept.id }}">{{ dept.name }} ({{ dept.short_name }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <p class="field-hint">Leave as "All Departments" to apply this structure to every department.</p>
+        </div>
+
+        <div class="field">
+          <label for="fs-year">Year</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/></svg>
+            <select id="fs-year" required>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">4th Year</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" id="fs-semester-field">
+          <label for="fs-semester">Semester</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            <select id="fs-semester">
+              <option value="">Every semester</option>
+            </select>
+          </div>
+          <p class="field-hint">Applies to every fee item below. Leave as "Every semester" to charge the same amount each semester of the year.</p>
+        </div>
+
+        <div class="field">
+          <label for="fs-academic-year">Academic Year</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            <select id="fs-academic-year" required>
+              {% for ay in academic_years %}
+              <option value="{{ ay.id }}" {% if current_academic_year and ay.id == current_academic_year.id %}selected{% endif %}>
+                {{ ay.name }}{% if ay.is_current %} (Current){% endif %}
+              </option>
+              {% empty %}
+              <option value="" disabled selected>No academic year configured</option>
+              {% endfor %}
+            </select>
+          </div>
+          <p class="field-hint">Defaults to the current academic year.</p>
+        </div>
+
+        <div class="field">
+          <label>Billing Cycle</label>
+          <div class="segmented">
+            <input type="radio" id="fs-billing-semester" name="billing_cycle" value="semester" checked>
+            <label for="fs-billing-semester">Semester-wise</label>
+            <input type="radio" id="fs-billing-year" name="billing_cycle" value="year">
+            <label for="fs-billing-year">Year-wise</label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- FEE ITEMS PANEL -->
+  <section class="panel" style="margin-top: 20px;">
+    <div class="panel-head">
+      <h2>Fee Items</h2>
+      <button type="button" id="add-item-btn" class="btn-ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
+        Add Fee Item
+      </button>
+    </div>
+    <div class="panel-body">
+
+      <!-- Quick-add chips of previous fee items -->
+      <div id="quick-add-wrap" style="display:none; margin-bottom:16px;">
+        <p class="field-hint" style="margin-bottom:8px;">Previous fee items — click to add:</p>
+        <div id="quick-add-chips" class="chip-list"></div>
+      </div>
+
+      <div id="fee-item-rows" style="display:flex; flex-direction:column; gap:12px;"></div>
+      <div id="fee-items-empty" class="dropdown-empty" style="padding: 12px 0;">
+        No fee items yet — click "Add Fee Item" or pick one from the previous fee items above.
+      </div>
+    </div>
+  </section>
+
+  <div class="form-actions" style="margin-top: 24px;">
+    <a href="{% url 'create-fee-structure-page' %}" class="btn-ghost">Cancel</a>
+    <button type="submit" class="btn-primary" id="submit-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Create Fee Structure
+    </button>
+  </div>
+</form>
+
+{{ fee_categories|json_script:"fee-categories-data" }}
+{% endblock %}
+
+{% block tab_js %}
+<style>
+.fee-item-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.fee-item-row .field { margin: 0; position: relative; }
+.fee-item-row .item-code[readonly] { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
+.remove-item-btn {
+  height: 40px;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.remove-item-btn:hover { background: #fee2e2; }
+
+/* Suggestion dropdown */
+.suggest-box {
+  display: none;
+  position: absolute;
+  left: 0; right: 0; top: 100%;
+  margin-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+  z-index: 50;
+}
+.suggest-box.open { display: block; }
+.suggest-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.suggest-item:hover, .suggest-item.active { background: #eff6ff; }
+.suggest-item .s-code { color: #64748b; font-size: 12px; }
+.suggest-item.disabled { opacity: .4; pointer-events: none; }
+.suggest-empty { padding: 10px 12px; font-size: 13px; color: #64748b; }
+
+/* Quick-add chips */
+.chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.chip:hover { background: #eff6ff; border-color: #93c5fd; }
+.chip.used { opacity: .4; pointer-events: none; text-decoration: line-through; }
+
+.form-alert {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.form-alert.error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+.form-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+</style>
+
+<script>
+(function () {
+  const rowsContainer = document.getElementById('fee-item-rows');
+  const emptyState = document.getElementById('fee-items-empty');
+  const addItemBtn = document.getElementById('add-item-btn');
+  const form = document.getElementById('fee-structure-form');
+  const alertBox = document.getElementById('form-alert');
+  const submitBtn = document.getElementById('submit-btn');
+  const quickWrap = document.getElementById('quick-add-wrap');
+  const quickChips = document.getElementById('quick-add-chips');
+
+  const billingRadios = document.querySelectorAll('input[name="billing_cycle"]');
+  const yearSelect = document.getElementById('fs-year');
+  const semesterField = document.getElementById('fs-semester-field');
+  const semesterSelect = document.getElementById('fs-semester');
+
+  const FEE_CATEGORIES = JSON.parse(document.getElementById('fee-categories-data').textContent);
+
+  const SEMESTERS_BY_YEAR = {
+    1: [[1, '1st Semester'], [2, '2nd Semester']],
+    2: [[3, '3rd Semester'], [4, '4th Semester']],
+    3: [[5, '5th Semester'], [6, '6th Semester']],
+    4: [[7, '7th Semester'], [8, '8th Semester']],
+  };
+
+  let rowCounter = 0;
+
+  /* ---------- helpers ---------- */
+  function getCsrfToken() {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+  }
+  function isSemesterBilling() {
+    return document.getElementById('fs-billing-semester').checked;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+  function findCategoryByName(name) {
+    const n = name.trim().toLowerCase();
+    return FEE_CATEGORIES.find((c) => c.name.toLowerCase() === n) || null;
+  }
+  function usedCategoryIds(exceptRow) {
+    const ids = new Set();
+    rowsContainer.querySelectorAll('.fee-item-row').forEach((row) => {
+      if (row !== exceptRow && row.dataset.categoryId) ids.add(row.dataset.categoryId);
+    });
+    return ids;
+  }
+
+  /* ---------- semester / billing ---------- */
+  function syncSemesterOptions() {
+    const year = yearSelect.value;
+    semesterSelect.innerHTML = '<option value="">Every semester</option>';
+    (SEMESTERS_BY_YEAR[year] || []).forEach(([val, label]) => {
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = label;
+      semesterSelect.appendChild(opt);
+    });
+  }
+  function syncSemesterFieldVisibility() {
+    semesterField.style.display = isSemesterBilling() ? '' : 'none';
+  }
+  yearSelect.addEventListener('change', syncSemesterOptions);
+  billingRadios.forEach((r) => r.addEventListener('change', syncSemesterFieldVisibility));
+  syncSemesterOptions();
+  syncSemesterFieldVisibility();
+
+  /* ---------- quick-add chips ---------- */
+  function renderChips() {
+    if (!FEE_CATEGORIES.length) { quickWrap.style.display = 'none'; return; }
+    quickWrap.style.display = 'block';
+    const used = usedCategoryIds(null);
+    quickChips.innerHTML = '';
+    FEE_CATEGORIES.forEach((c) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chip' + (used.has(String(c.id)) ? ' used' : '');
+      btn.textContent = c.name;
+      btn.title = c.code;
+      btn.addEventListener('click', () => addItemRow(c));
+      quickChips.appendChild(btn);
+    });
+  }
+
+  function toggleEmptyState() {
+    emptyState.style.display = rowsContainer.children.length === 0 ? 'block' : 'none';
+  }
+
+  /* ---------- fee item row ---------- */
+  function addItemRow(prefill) {
+    rowCounter += 1;
+    const row = document.createElement('div');
+    row.className = 'fee-item-row';
+    row.id = `item-row-${rowCounter}`;
+    row.dataset.categoryId = '';
+
+    row.innerHTML = `
+      <div class="field">
+        <label>Fee Name</label>
+        <div class="input-shell">
+          <input type="text" class="item-name" placeholder="Type or pick e.g. Tuition Fee" required>
+        </div>
+        <div class="suggest-box"></div>
+      </div>
+      <div class="field">
+        <label>Code</label>
+        <div class="input-shell">
+          <input type="text" class="item-code" placeholder="e.g. TUITION" style="text-transform:uppercase;" required>
+        </div>
+      </div>
+      <div class="field">
+        <label>Amount (₹)</label>
+        <div class="input-shell">
+          <input type="number" class="item-amount" min="0" step="0.01" placeholder="0.00" required>
+        </div>
+      </div>
+      <button type="button" class="remove-item-btn" title="Remove item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    `;
+
+    const nameInput = row.querySelector('.item-name');
+    const codeInput = row.querySelector('.item-code');
+    const amountInput = row.querySelector('.item-amount');
+    const box = row.querySelector('.suggest-box');
+
+    function applyCategory(cat) {
+      if (cat) {
+        row.dataset.categoryId = cat.id;
+        nameInput.value = cat.name;
+        codeInput.value = cat.code;
+        codeInput.readOnly = true;
+      } else {
+        row.dataset.categoryId = '';
+        codeInput.readOnly = false;
+      }
+      renderChips();
+    }
+
+    {% comment %} function renderSuggestions() {
+      const q = nameInput.value.trim().toLowerCase();
+      const used = usedCategoryIds(row);
+      const matches = FEE_CATEGORIES.filter(
+        (c) => !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
+      );
+      if (!matches.length) {
+        box.innerHTML = '<div class="suggest-empty">No match — this will be created as a new fee type.</div>';
+      } else {
+        box.innerHTML = matches.map((c) => `
+          <div class="suggest-item ${used.has(String(c.id)) ? 'disabled' : ''}" data-id="${c.id}">
+            <span>${escapeHtml(c.name)}${c.is_optional ? ' <em>· optional</em>' : ''}</span>
+            <span class="s-code">${escapeHtml(c.code)}</span>
+          </div>`).join('');
+      }
+      box.classList.add('open');
+    } {% endcomment %}
+
+    {% comment %} nameInput.addEventListener('focus', renderSuggestions); {% endcomment %}
+    nameInput.addEventListener('input', function () {
+      // Typing again unlinks any previously picked category, unless it matches exactly
+      const exact = findCategoryByName(nameInput.value);
+      if (exact && !usedCategoryIds(row).has(String(exact.id))) {
+        applyCategory(exact);
+      } else {
+        if (row.dataset.categoryId) codeInput.value = '';
+        applyCategory(null);
+      }
+      renderSuggestions();
+    });
+
+    // mousedown (not click) so it fires before the input's blur
+    box.addEventListener('mousedown', function (e) {
+      const item = e.target.closest('.suggest-item');
+      if (!item) return;
+      e.preventDefault();
+      const cat = FEE_CATEGORIES.find((c) => String(c.id) === item.dataset.id);
+      applyCategory(cat);
+      box.classList.remove('open');
+      amountInput.focus();
+    });
+
+    nameInput.addEventListener('blur', () => box.classList.remove('open'));
+
+    row.querySelector('.remove-item-btn').addEventListener('click', function () {
+      row.remove();
+      toggleEmptyState();
+      renderChips();
+    });
+
+    rowsContainer.appendChild(row);
+    if (prefill) {
+      applyCategory(prefill);
+      amountInput.focus();
+    }
+    toggleEmptyState();
+    renderChips();
+  }
+
+  addItemBtn.addEventListener('click', () => addItemRow());
+
+  // Start with one empty row so the page isn't empty
+  addItemRow();
+
+  /* ---------- submit ---------- */
+  function showAlert(message, type) {
+    alertBox.textContent = message;
+    alertBox.className = `form-alert ${type}`;
+    alertBox.style.display = 'block';
+    alertBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function collectItems() {
+    const semesterVal = semesterSelect.value;
+    const semester = isSemesterBilling() && semesterVal ? parseInt(semesterVal, 10) : null;
+
+    const items = [];
+    rowsContainer.querySelectorAll('.fee-item-row').forEach((row) => {
+      items.push({
+        category: row.dataset.categoryId || null,   // existing FeeCategory id, or null for a new one
+        name: row.querySelector('.item-name').value.trim(),
+        code: row.querySelector('.item-code').value.trim().toUpperCase(),
+        amount: row.querySelector('.item-amount').value,
+        semester: semester,
+      });
+    });
+    return items;
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    alertBox.style.display = 'none';
+
+    const items = collectItems();
+    if (items.length === 0) {
+      showAlert('Add at least one fee item.', 'error');
+      return;
+    }
+
+    // Block duplicate codes inside the same request
+    const codes = items.map((i) => i.code);
+    if (new Set(codes).size !== codes.length) {
+      showAlert('Each fee item must have a unique code.', 'error');
+      return;
+    }
+
+    const payload = {
+      college: document.getElementById('fs-college').value,
+      department: document.getElementById('fs-department').value || null,
+      year: parseInt(document.getElementById('fs-year').value, 10),
+      academic_year: document.getElementById('fs-academic-year').value,   // AcademicYear UUID
+      billing_cycle: document.querySelector('input[name="billing_cycle"]:checked').value,
+      items: items,
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating...';
+
+    try {
+      const response = await fetch("{% url 'api-create-fee-structure' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const message =
+          typeof data === 'object'
+            ? Object.values(data).flat().join(' ')
+            : 'Something went wrong. Please check the form and try again.';
+        showAlert(message, 'error');
+        return;
+      }
+
+      showAlert('Fee structure created successfully.', 'success');
+      form.reset();
+      rowsContainer.innerHTML = '';
+      addItemRow();
+      syncSemesterOptions();
+      syncSemesterFieldVisibility();
+    } catch (err) {
+      showAlert('Network error — please try again.', 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Create Fee Structure`;
+    }
+  });
+})();
+</script>
+{% endblock %}

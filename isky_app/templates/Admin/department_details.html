@@ -1,0 +1,385 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · {{ department.name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'department-list' %}" class="crumb-link">Departments</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">{{ department.name }}</span>
+{% endblock %}
+
+{% block main_content %}
+<style>
+  .profile-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .profile-head .p-name { font-size: 19px; font-weight: 700; color: var(--ink-900); }
+  .profile-head .p-meta { font-size: 13px; color: var(--ink-500); margin-top: 2px; }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+  .stat-card .stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    margin-bottom: 6px;
+  }
+  .stat-card .stat-value { font-size: 22px; font-weight: 700; color: var(--ink-900); }
+
+  .edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .edit-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    color: var(--ink-500);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .edit-field input[type="text"] {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    background: var(--cream);
+    color: var(--ink-900);
+  }
+  .edit-field input:focus {
+    outline: none;
+    border-color: var(--secondary-light);
+    box-shadow: 0 0 0 3px rgba(10, 107, 102, .12);
+  }
+  .edit-field input:disabled {
+    background: var(--card);
+    color: var(--ink-500);
+    cursor: not-allowed;
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 8px;
+  }
+  .toggle-row input:disabled { cursor: not-allowed; opacity: .5; }
+
+  .panel-head-actions { display: flex; align-items: center; gap: 10px; }
+  #editModeBanner {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--secondary-light);
+    display: none;
+  }
+
+  .staff-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-900);
+    margin: 18px 0 10px;
+  }
+  .staff-section-title:first-child { margin-top: 0; }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>Department</h1>
+    <div class="college-line">Manage department details, HOD, and faculty</div>
+  </div>
+  <a href="{% url 'department-list' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Departments
+  </a>
+</div>
+
+<!-- ---------- Header ---------- -->
+<div class="profile-head">
+  <div class="dir-avatar">{{ department.name|slice:":2"|upper }}</div>
+  <div>
+    <div class="p-name">{{ department.name }}</div>
+    <div class="p-meta">{{ department.degree }} &middot; Code: {{ department.code }}</div>
+  </div>
+  <span class="pill {% if department.is_active %}active{% else %}blocked{% endif %}" style="margin-left:auto;">
+    {% if department.is_active %}Active{% else %}Inactive{% endif %}
+  </span>
+</div>
+
+<!-- ---------- Quick stats ---------- -->
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-label">Students</div>
+    <div class="stat-value">{{ student_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Staff Total</div>
+    <div class="stat-value">{{ staff_total }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">HOD Assigned</div>
+    <div class="stat-value">{% if hod %}Yes{% else %}—{% endif %}</div>
+  </div>
+</div>
+
+<!-- ---------- Editable department fields ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>Department Details</h2>
+    <div class="panel-head-actions">
+      <span id="editModeBanner">Editing — remember to save</span>
+      <span id="deptSaveMsg" class="field-hint" style="margin:0;"></span>
+      {% if can_edit %}
+      <button type="button" id="editToggleBtn" class="btn-ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Edit
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="panel-body">
+    <form id="deptForm">
+      <div class="edit-grid">
+        <div class="edit-field">
+          <label for="f-name">Department Name</label>
+          <input type="text" id="f-name" name="name" value="{{ department.name }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-code">Code</label>
+          <input type="text" id="f-code" name="code" value="{{ department.code }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-short-name">Short Name</label>
+          <input type="text" id="f-short-name" name="short_name" value="{{ department.short_name }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label>Active Status</label>
+          <div class="toggle-row">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink-900);cursor:pointer;">
+              <input type="checkbox" id="f-active" name="is_active" {% if department.is_active %}checked{% endif %} disabled style="width:16px;height:16px;">
+              <span id="activeLabel">{% if department.is_active %}Active{% else %}Inactive{% endif %}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {% if can_edit %}
+      <div class="form-actions" id="saveRow" style="display:none;">
+        <button type="button" id="cancelEditBtn" class="btn-ghost">Cancel</button>
+        <button type="button" id="saveDeptBtn" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Save Changes
+        </button>
+      </div>
+      {% else %}
+      <p class="empty-note" style="margin-top:14px;">Only the HOD of this department, Office Admin, or Principal can edit these details.</p>
+      {% endif %}
+    </form>
+  </div>
+</section>
+
+<!-- ---------- HOD ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head"><h2>Head of Department</h2></div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead><tr><th>Name</th><th>Email</th><th>Designation</th><th>Joined</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for s in hod %}
+        <tr>
+          <td>
+            <div class="dir-item" style="border:none;padding:0;">
+              <div class="dir-avatar">{{ s.college_user.user.first_name|slice:":2"|upper }}</div>
+              <div class="dir-info"><div class="dn">{{ s.college_user.user.first_name }} {{ s.college_user.user.last_name }}</div></div>
+            </div>
+          </td>
+          <td>{{ s.college_user.user.email }}</td>
+          <td>{{ s.designation|default:"—" }}</td>
+          <td>{{ s.joining_date|date:"M j, Y"|default:"—" }}</td>
+          <td><span class="pill active">Active</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><p class="empty-note">No HOD assigned to this department yet.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ---------- Faculty (Class Advisors + Staff) ---------- -->
+<section class="panel">
+  <div class="panel-head"><h2>Faculty</h2></div>
+  <div class="panel-body table-wrap">
+    <div class="staff-section-title">Class Advisors</div>
+    <table class="simple-table" style="margin-bottom:22px;">
+      <thead><tr><th>Name</th><th>Email</th><th>Designation</th><th>Joined</th></tr></thead>
+      <tbody>
+        {% for s in class_advisors %}
+        <tr>
+          <td>
+            <div class="dir-item" style="border:none;padding:0;">
+              <div class="dir-avatar">{{ s.college_user.user.first_name|slice:":2"|upper }}</div>
+              <div class="dir-info"><div class="dn">{{ s.college_user.user.first_name }} {{ s.college_user.user.last_name }}</div></div>
+            </div>
+          </td>
+          <td>{{ s.college_user.user.email }}</td>
+          <td>{{ s.designation|default:"—" }}</td>
+          <td>{{ s.joining_date|date:"M j, Y"|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><p class="empty-note">No class advisors assigned yet.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="staff-section-title">Staff</div>
+    <table class="simple-table">
+      <thead><tr><th>Name</th><th>Email</th><th>Designation</th><th>Joined</th></tr></thead>
+      <tbody>
+        {% for s in faculty %}
+        <tr>
+          <td>
+            <div class="dir-item" style="border:none;padding:0;">
+              <div class="dir-avatar">{{ s.college_user.user.first_name|slice:":2"|upper }}</div>
+              <div class="dir-info"><div class="dn">{{ s.college_user.user.first_name }} {{ s.college_user.user.last_name }}</div></div>
+            </div>
+          </td>
+          <td>{{ s.college_user.user.email }}</td>
+          <td>{{ s.designation|default:"—" }}</td>
+          <td>{{ s.joining_date|date:"M j, Y"|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><p class="empty-note">No staff assigned to this department yet.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    function getCookie(name) {
+      const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? match.pop() : '';
+    }
+
+    const editableInputs = ['f-name', 'f-code', 'f-short-name', 'f-active'].map((id) => document.getElementById(id));
+    const editToggleBtn = document.getElementById('editToggleBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const saveRow = document.getElementById('saveRow');
+    const editModeBanner = document.getElementById('editModeBanner');
+    const activeBox = document.getElementById('f-active');
+    const activeLabel = document.getElementById('activeLabel');
+
+    // Snapshot of original values, used to restore on Cancel
+    let originalValues = null;
+    function snapshot() {
+      originalValues = {
+        name: document.getElementById('f-name').value,
+        code: document.getElementById('f-code').value,
+        short_name: document.getElementById('f-short-name').value,
+        is_active: activeBox.checked,
+      };
+    }
+
+    function setEditing(on) {
+      editableInputs.forEach((el) => { if (el) el.disabled = !on; });
+      if (saveRow) saveRow.style.display = on ? 'flex' : 'none';
+      if (editModeBanner) editModeBanner.style.display = on ? 'inline' : 'none';
+      if (editToggleBtn) editToggleBtn.style.display = on ? 'none' : 'inline-flex';
+    }
+
+    if (editToggleBtn) {
+      editToggleBtn.addEventListener('click', () => {
+        snapshot();
+        setEditing(true);
+      });
+    }
+
+    if (cancelEditBtn) {
+      cancelEditBtn.addEventListener('click', () => {
+        if (originalValues) {
+          document.getElementById('f-name').value = originalValues.name;
+          document.getElementById('f-code').value = originalValues.code;
+          document.getElementById('f-short-name').value = originalValues.short_name;
+          activeBox.checked = originalValues.is_active;
+          activeLabel.textContent = activeBox.checked ? 'Active' : 'Inactive';
+        }
+        setEditing(false);
+        document.getElementById('deptSaveMsg').textContent = '';
+      });
+    }
+
+    if (activeBox) {
+      activeBox.addEventListener('change', () => {
+        activeLabel.textContent = activeBox.checked ? 'Active' : 'Inactive';
+      });
+    }
+
+    const saveBtn = document.getElementById('saveDeptBtn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const msg = document.getElementById('deptSaveMsg');
+        const payload = {
+          name: document.getElementById('f-name').value,
+          code: document.getElementById('f-code').value,
+          short_name: document.getElementById('f-short-name').value,
+          is_active: activeBox.checked,
+        };
+
+        saveBtn.disabled = true;
+        msg.textContent = 'Saving…';
+
+        try {
+          const res = await fetch("{% url 'update-department' department.id %}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            msg.textContent = 'Saved.';
+            setEditing(false);
+          } else {
+            msg.textContent = (data.detail) || (data.code ? data.code[0] : 'Could not save — check the fields.');
+            console.error(data);
+          }
+        } catch (e) {
+          msg.textContent = 'Network error while saving.';
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

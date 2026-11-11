@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}ISKY ERP · Home{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ---------- HOME PAGE ONLY (uses shared color tokens from common.css) ---------- */
+  .home-wrap{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:clamp(28px,5vw,64px) 20px;
+  }
+
+  .home-mark{ display:inline-flex; align-items:center; gap:14px; margin-bottom:40px; }
+  .home-badge{
+    width:46px; height:46px; border-radius:13px;
+    background:linear-gradient(155deg, var(--primary-light), var(--primary));
+    display:flex; align-items:center; justify-content:center;
+  }
+  .home-badge svg{ width:22px; height:22px; color:#fff; }
+  .home-text .name{ font-family:'Fraunces',serif; font-weight:700; font-size:1.3rem; color:var(--primary-dark); line-height:1; }
+  .home-text .sub{ font-family:'JetBrains Mono',monospace; font-size:0.62rem; letter-spacing:0.22em; color:var(--ink-500); margin-top:4px; }
+
+  .home-title{
+    font-family:'Fraunces',serif; font-weight:600; text-align:center;
+    font-size:clamp(1.9rem,3.4vw,2.8rem); color:var(--primary-dark);
+    margin:0 0 12px; max-width:20ch;
+  }
+  .home-title em{ font-style:italic; color:var(--gold); }
+  .home-lede{
+    text-align:center; color:var(--ink-500); max-width:520px;
+    margin:0 0 48px; line-height:1.6;
+  }
+
+  /* Hierarchy strip */
+  .hierarchy{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+    gap:10px; margin-bottom:20px; max-width:900px;
+  }
+  .h-node{
+    font-family:'JetBrains Mono',monospace; font-size:0.72rem; letter-spacing:0.03em;
+    background:#fff; border:1px solid var(--line); color:var(--primary-dark);
+    padding:9px 14px; border-radius:9px; font-weight:600;
+  }
+  .h-arrow{ color:var(--ink-500); font-size:0.9rem; }
+  .staff-split{
+    display:flex; flex-wrap:wrap; justify-content:center; gap:8px;
+    margin-bottom:56px;
+  }
+  .h-subnode{
+    font-family:'JetBrains Mono',monospace; font-size:0.66rem;
+    background:rgba(73,50,103,0.07); border:1px dashed var(--primary-light);
+    color:var(--primary); padding:6px 11px; border-radius:7px;
+  }
+
+  /* Portal cards */
+  .portal-grid{
+    display:grid; grid-template-columns:repeat(3, minmax(240px,1fr));
+    gap:22px; width:100%; max-width:1100px;
+  }
+  .portal-card{
+    background:#fff; border:1px solid var(--line); border-radius:18px;
+    padding:30px 26px; text-decoration:none; color:inherit;
+    display:flex; flex-direction:column; gap:14px;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .portal-card:hover{
+    transform:translateY(-3px);
+    box-shadow:0 14px 34px rgba(51,35,74,0.12);
+    border-color:var(--primary-light);
+  }
+  .portal-icon{
+    width:48px; height:48px; border-radius:13px;
+    background:linear-gradient(155deg, var(--primary-light), var(--primary));
+    display:flex; align-items:center; justify-content:center;
+  }
+  .portal-icon.alt{ background:linear-gradient(155deg, var(--secondary-light), var(--secondary)); }
+  .portal-icon.student{ background:linear-gradient(155deg, var(--gold), var(--primary-light)); }
+  .portal-icon svg{ width:22px; height:22px; color:#fff; }
+  .portal-card h2{ font-family:'Fraunces',serif; font-size:1.2rem; margin:0; color:var(--primary-dark); }
+  .portal-card p{ font-size:0.87rem; color:var(--ink-500); line-height:1.55; margin:0; }
+  .portal-roles{ display:flex; flex-wrap:wrap; gap:6px; margin-top:2px; }
+  .portal-roles span{
+    font-family:'JetBrains Mono',monospace; font-size:0.62rem;
+    background:var(--cream); border:1px solid var(--line); color:var(--ink-500);
+    padding:5px 9px; border-radius:6px;
+  }
+  .portal-go{
+    margin-top:auto; display:inline-flex; align-items:center; gap:6px;
+    font-weight:600; font-size:0.86rem; color:var(--primary);
+  }
+  .portal-go svg{ width:15px; height:15px; transition:transform .18s ease; }
+  .portal-card:hover .portal-go svg{ transform:translateX(3px); }
+
+  @media (max-width: 960px){
+    .portal-grid{ grid-template-columns:repeat(2, minmax(240px,1fr)); max-width:820px; }
+  }
+  @media (max-width: 620px){
+    .portal-grid{ grid-template-columns:1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="home-wrap">
+
+  <div class="home-mark">
+    <div class="home-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
+    </div>
+    <div class="home-text">
+      <div class="name">ISKY</div>
+      <div class="sub">ERP PORTAL</div>
+    </div>
+  </div>
+
+  <h1 class="home-title">One campus, <em>every</em> console.</h1>
+  <p class="home-lede">
+    Choose your portal below to sign in. Access is organized by role, from
+    Master Admin down to Students.
+  </p>
+
+  <!-- Org hierarchy strip -->
+  <div class="hierarchy">
+    <span class="h-node">Master Admin</span>
+    <span class="h-arrow">&rarr;</span>
+    <span class="h-node">Office Admin</span>
+    <span class="h-arrow">&rarr;</span>
+    <span class="h-node">Staff Admin</span>
+    <span class="h-arrow">&rarr;</span>
+    <span class="h-node">Students</span>
+  </div>
+  <div class="staff-split">
+    <span class="h-subnode">HOD</span>
+    <span class="h-subnode">Faculty Advisor</span>
+    <span class="h-subnode">Staff</span>
+  </div>
+
+  <!-- Portal selection -->
+  <div class="portal-grid">
+
+    <!-- Admin -->
+    <a class="portal-card" href="{% url 'admin_login' %}">
+      <div class="portal-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="m16 12 2 2 4-4"/></svg>
+      </div>
+      <h2>Admin Login</h2>
+      <p>For Master Admin and Office Admin — manage admissions, finance, examinations and campus-wide operations.</p>
+      <div class="portal-roles"><span>MASTER ADMIN</span><span>OFFICE ADMIN</span></div>
+      <span class="portal-go">Continue to Admin Login
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </span>
+    </a>
+
+    <!-- Staff -->
+    <a class="portal-card" href="{% url 'staff_login' %}">
+      <div class="portal-icon alt">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h2>Staff Login</h2>
+      <p>For HODs, Faculty Advisors and Staff — attendance, student records, and department-level tools.</p>
+      <div class="portal-roles"><span>HOD</span><span>FACULTY ADVISOR</span><span>STAFF</span></div>
+      <span class="portal-go">Continue to Staff Login
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </span>
+    </a>
+
+    <!-- Student -->
+    <a class="portal-card" href="{% url 'student_login' %}">
+      <div class="portal-icon student">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
+      </div>
+      <h2>Student Login</h2>
+      <p>For enrolled students — view attendance, timetable, marks, fee status and campus notices.</p>
+      <div class="portal-roles"><span>STUDENT</span></div>
+      <span class="portal-go">Continue to Student Login
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </span>
+    </a>
+
+  </div>
+
+  <p class="foot-note" style="margin-top:56px;">&copy; 2026 ISKY &middot; All rights reserved</p>
+</div>
+{% endblock %}

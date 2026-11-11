@@ -1,0 +1,62 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Subjects{% endblock %}
+{% block breadcrumb_label %}Subjects{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Subjects</h1>
+    <div class="college-line">Department-wise curriculum · grouped by semester</div>
+  </div>
+  <a href="{% url 'create-subject' %}" class="btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    Create Subject
+  </a>
+</div>
+
+{% for group in department_groups %}
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>{{ group.department.name }}</h2>
+    <span class="field-hint" style="margin:0;">{{ group.subject_count }} subject{{ group.subject_count|pluralize }}</span>
+  </div>
+
+  <div class="panel-body">
+    {% for sem in group.semester_groups %}
+      <div class="form-section-title" {% if forloop.first %}style="margin-top:0;"{% endif %}>
+        {{ sem.semester_display }} <span class="field-hint" style="display:inline;">· {{ sem.year_display }}</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="simple-table">
+          <thead>
+            <tr><th>Code</th><th>Subject</th><th>Type</th><th>Credits</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for subj in sem.subjects %}
+            <tr>
+              <td><span class="dir-id">{{ subj.code }}</span></td>
+              <td>{{ subj.name }}</td>
+              <td>{{ subj.get_subject_type_display }}</td>
+              <td>{{ subj.credits }}</td>
+              <td><span class="pill {% if subj.is_active %}active{% else %}blocked{% endif %}">{% if subj.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+              <td><a href="{% url 'subject-detail' subj.id %}" class="view-all">Manage</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% empty %}
+      <p class="empty-note">No subjects added for this department yet.</p>
+    {% endfor %}
+  </div>
+</section>
+{% empty %}
+<section class="panel">
+  <div class="panel-body">
+    <p class="empty-note">No departments found. Create a department first, then add subjects.</p>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

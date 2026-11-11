@@ -1,0 +1,200 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Fee Management{% endblock %}
+{% block breadcrumb_label %}Fee Management{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Fee Management</h1>
+    <div class="college-line">
+      {% if access_level == "department" %}Showing your department only
+      {% elif access_level == "class" %}Showing your class only
+      {% else %}Department-wise fee status · grouped by academic year{% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+  .fee-summary-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
+  @media (max-width:900px){ .fee-summary-row{ grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:520px){ .fee-summary-row{ grid-template-columns:1fr;} }
+  .fee-summary-card { display:block; background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 16px; text-decoration:none; transition:border-color .15s ease, box-shadow .15s ease; }
+  .fee-summary-card:hover { border-color:var(--secondary-light); box-shadow:0 4px 14px rgba(0,0,0,.06); }
+  .fee-summary-card.is-active { border-color:var(--secondary-light); box-shadow:0 0 0 2px rgba(10,107,102,.12); }
+  .fee-summary-card .fs-label { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; font-weight:700;
+    color:var(--ink-500); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .fee-summary-card .fs-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .fee-summary-card.all .fs-dot { background:var(--ink-500); }
+  .fee-summary-card.paid .fs-dot { background:#15803d; }
+  .fee-summary-card.partial .fs-dot { background:#c2410c; }
+  .fee-summary-card.unpaid .fs-dot { background:#b91c1c; }
+  .fee-summary-card .fs-num { font-family:'Fraunces',serif; font-size:24px; font-weight:700; color:var(--ink-900); line-height:1; }
+  .fee-summary-card .fs-pct { font-size:12px; font-weight:600; color:var(--ink-500); margin-left:6px; }
+
+  .filter-bar { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px 20px; margin-bottom:18px; }
+  .filter-bar form { display:flex; flex-wrap:wrap; align-items:end; gap:16px; }
+  .filter-bar .filter-field { flex:1 1 170px; min-width:150px; }
+  .filter-bar label { display:block; font-size:13px; font-weight:700; color:var(--ink-900); margin-bottom:8px; }
+  .filter-bar .filter-control { width:100%; appearance:none; -webkit-appearance:none;
+    background:var(--cream) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7078' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+    background-size:16px; border:1px solid var(--line); border-radius:10px; padding:11px 34px 11px 14px;
+    font-family:'Inter',sans-serif; font-size:14px; color:var(--ink-900); outline:none; }
+  .filter-bar .filter-control:focus { border-color:var(--secondary-light); box-shadow:0 0 0 3px rgba(10,107,102,.12); }
+  .filter-bar .filter-actions { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .filter-bar .btn-apply { background:var(--secondary-light); color:#fff; border:none; border-radius:10px; padding:12px 20px;
+    font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .filter-bar .btn-apply:hover { background:var(--secondary); }
+  .filter-bar .btn-clear { font-size:13px; font-weight:600; color:var(--ink-500); text-decoration:none; white-space:nowrap; }
+  .filter-bar .btn-clear:hover { color:var(--ink-900); }
+
+  .fee-pill { display:inline-flex; align-items:center; font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px;
+    text-transform:uppercase; letter-spacing:.03em; }
+  .fee-pill.paid { background:#f0fdf4; color:#15803d; }
+  .fee-pill.partial { background:#fff7ed; color:#c2410c; }
+  .fee-pill.unpaid { background:#fef2f2; color:#b91c1c; }
+</style>
+
+<!-- ---------- Fee status summary cards ---------- -->
+<div class="fee-summary-row">
+  {% url 'fee-management' as base_url %}
+  <a href="{{ base_url }}?department={{ selected_department }}&academic_year={{ selected_academic_year }}&year={{ selected_year }}&semester={{ selected_semester }}"
+     class="fee-summary-card all {% if not selected_payment_status %}is-active{% endif %}">
+    <div class="fs-label"><span class="fs-dot"></span>All Students</div>
+    <span class="fs-num">{{ payment_summary.total }}</span>
+  </a>
+  <a href="{{ base_url }}?department={{ selected_department }}&academic_year={{ selected_academic_year }}&year={{ selected_year }}&semester={{ selected_semester }}&payment_status=paid"
+     class="fee-summary-card paid {% if selected_payment_status == 'paid' %}is-active{% endif %}">
+    <div class="fs-label"><span class="fs-dot"></span>Paid</div>
+    <span class="fs-num">{{ payment_summary.paid.count }}</span><span class="fs-pct">{{ payment_summary.paid.percentage }}%</span>
+  </a>
+  <a href="{{ base_url }}?department={{ selected_department }}&academic_year={{ selected_academic_year }}&year={{ selected_year }}&semester={{ selected_semester }}&payment_status=partial"
+     class="fee-summary-card partial {% if selected_payment_status == 'partial' %}is-active{% endif %}">
+    <div class="fs-label"><span class="fs-dot"></span>Partially Paid</div>
+    <span class="fs-num">{{ payment_summary.partial.count }}</span><span class="fs-pct">{{ payment_summary.partial.percentage }}%</span>
+  </a>
+  <a href="{{ base_url }}?department={{ selected_department }}&academic_year={{ selected_academic_year }}&year={{ selected_year }}&semester={{ selected_semester }}&payment_status=unpaid"
+     class="fee-summary-card unpaid {% if selected_payment_status == 'unpaid' %}is-active{% endif %}">
+    <div class="fs-label"><span class="fs-dot"></span>Unpaid</div>
+    <span class="fs-num">{{ payment_summary.unpaid.count }}</span><span class="fs-pct">{{ payment_summary.unpaid.percentage }}%</span>
+  </a>
+</div>
+
+<!-- ---------- Filters ---------- -->
+<div class="filter-bar">
+  <form method="get" action="{% url 'fee-management' %}">
+    {% if access_level == "full" %}
+    <div class="filter-field">
+      <label for="f-department">Department</label>
+      <select id="f-department" name="department" class="filter-control">
+        <option value="">All Departments</option>
+        {% for dept in departments %}
+        <option value="{{ dept.id }}" {% if selected_department == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    <div class="filter-field">
+      <label for="f-academic-year">Academic Year</label>
+      <select id="f-academic-year" name="academic_year" class="filter-control">
+        <option value="">All Years</option>
+        {% for ay in academic_years %}
+        <option value="{{ ay }}" {% if selected_academic_year == ay %}selected{% endif %}>{{ ay }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if access_level != "class" %}
+    <div class="filter-field">
+      <label for="f-year">Year of Study</label>
+      <select id="f-year" name="year" class="filter-control">
+        <option value="">All Years</option>
+        <option value="1" {% if selected_year == "1" %}selected{% endif %}>1st Year</option>
+        <option value="2" {% if selected_year == "2" %}selected{% endif %}>2nd Year</option>
+        <option value="3" {% if selected_year == "3" %}selected{% endif %}>3rd Year</option>
+        <option value="4" {% if selected_year == "4" %}selected{% endif %}>4th Year</option>
+      </select>
+    </div>
+    {% endif %}
+
+    <div class="filter-field">
+      <label for="f-semester">Semester</label>
+      <select id="f-semester" name="semester" class="filter-control">
+        <option value="">All Semesters</option>
+        {% for s in "12345678" %}
+        <option value="{{ s }}" {% if selected_semester == s %}selected{% endif %}>{{ s }}{% if s == "1" %}st{% elif s == "2" %}nd{% elif s == "3" %}rd{% else %}th{% endif %} Semester</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="f-payment-status">Fee Status</label>
+      <select id="f-payment-status" name="payment_status" class="filter-control">
+        <option value="" {% if not selected_payment_status %}selected{% endif %}>All</option>
+        <option value="paid" {% if selected_payment_status == "paid" %}selected{% endif %}>Paid</option>
+        <option value="partial" {% if selected_payment_status == "partial" %}selected{% endif %}>Partially Paid</option>
+        <option value="unpaid" {% if selected_payment_status == "unpaid" %}selected{% endif %}>Unpaid</option>
+      </select>
+    </div>
+
+    <div class="filter-actions">
+      <a href="{% url 'fee-management' %}" class="btn-clear">Clear</a>
+      <button type="submit" class="btn-apply">Apply Filters</button>
+    </div>
+  </form>
+</div>
+
+<!-- ---------- Results: Department -> Academic Year -> Students ---------- -->
+{% for group in department_groups %}
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>{{ group.department.name }}</h2>
+    <span class="field-hint" style="margin:0;">{{ group.student_count }} student{{ group.student_count|pluralize }}</span>
+  </div>
+  <div class="panel-body">
+    {% for yg in group.year_groups %}
+      <div class="form-section-title" {% if forloop.first %}style="margin-top:0;"{% endif %}>{{ yg.academic_year }}</div>
+      <div class="table-wrap">
+        <table class="simple-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Admission No.</th><th>Roll No.</th><th>Year / Sem</th><th>Section</th><th>Fees</th>
+              {% if can_open_detail %}<th></th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for stu in yg.students %}
+            <tr>
+              <td>
+                <div class="dir-item" style="border:none;padding:0;">
+                  <div class="dir-avatar">{{ stu.first_name|slice:":2"|upper }}</div>
+                  <div class="dir-info">
+                    <div class="dn">{{ stu.first_name }} {{ stu.last_name }}</div>
+                    <div class="dm">{{ stu.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="dir-id">{{ stu.admission_number }}</span></td>
+              <td>{{ stu.roll_number|default:"—" }}</td>
+              <td>{{ stu.year_display|default:"—" }} · {{ stu.semester_display|default:"—" }}</td>
+              <td>{{ stu.section|default:"—" }}</td>
+              <td><span class="fee-pill {{ stu.payment_status }}">{{ stu.payment_status }}</span></td>
+              {% if can_open_detail %}
+              <td><a href="{% url 'fee-student-detail' stu.id %}" class="view-all">View fees</a></td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% empty %}
+      <p class="empty-note">No students match the current filters in this department.</p>
+    {% endfor %}
+  </div>
+</section>
+{% empty %}
+<section class="panel"><div class="panel-body"><p class="empty-note">No students found for the selected filters.</p></div></section>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,174 @@
+{% extends "Student/sidebar.html" %}
+{% load static %}
+
+{% block breadcrumb_label %}My Profile{% endblock %}
+
+{% block tab_css %}
+<style>
+  .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+  .profile-grid .col-span-2 { grid-column: 1 / -1; }
+  .pf-field { margin-bottom: 16px; }
+  .pf-field label {
+    display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--ink-500); margin-bottom: 4px;
+  }
+  .pf-field .val { font-size: 13.5px; color: var(--ink-900); font-weight: 500; }
+
+  .pw-step { display: none; }
+  .pw-step.active { display: block; }
+  .pw-msg { font-size: 12.5px; margin-top: 10px; padding: 8px 10px; border-radius: 8px; display: none; }
+  .pw-msg.error { display: block; background: #fdecec; color: #9a2a2a; }
+  .pw-msg.success { display: block; background: #e7f5ee; color: #1a6b45; }
+  .input-shell input { padding: 8px 0; }
+  @media (max-width: 640px) { .profile-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div><h1>My Profile</h1></div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Personal Details</h2></div>
+  <div class="panel-body">
+    <div class="profile-grid">
+      <div class="pf-field"><label>Full Name</label><div class="val">{{ student.full_name }}</div></div>
+      <div class="pf-field"><label>Admission Number</label><div class="val">{{ student.admission_number }}</div></div>
+      <div class="pf-field"><label>Email</label><div class="val">{{ student.email }}</div></div>
+      <div class="pf-field"><label>Mobile Number</label><div class="val">{{ student.mobile_number|default:"—" }}</div></div>
+      <div class="pf-field"><label>College</label><div class="val">{{ student.college_name }}</div></div>
+      <div class="pf-field"><label>Department</label><div class="val">{{ student.department_name|default:"—" }}</div></div>
+      <div class="pf-field"><label>Year</label><div class="val">{{ student.year_display|default:"—" }}</div></div>
+      <div class="pf-field"><label>Semester</label><div class="val">{{ student.semester_display|default:"—" }}</div></div>
+      <div class="pf-field"><label>Section</label><div class="val">{{ student.section|default:"—" }}</div></div>
+      <div class="pf-field"><label>Roll Number</label><div class="val">{{ student.roll_number|default:"—" }}</div></div>
+      <div class="pf-field"><label>Date of Birth</label><div class="val">{{ student.date_of_birth|default:"—" }}</div></div>
+      <div class="pf-field"><label>Blood Group</label><div class="val">{{ student.blood_group_display|default:"—" }}</div></div>
+      <div class="pf-field"><label>Emergency Contact</label><div class="val">{{ student.emergency_contact_number|default:"—" }}</div></div>
+      <div class="pf-field col-span-2"><label>Address</label><div class="val">{{ student.address|default:"—" }}</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="panel" style="margin-top: 15px;">
+  <div class="panel-head"><h2>Change Password</h2></div>
+  <div class="panel-body">
+
+    <!-- Step 1: request OTP -->
+    <div class="pw-step active" id="pwStep1">
+      <p class="field-hint" style="margin-bottom:14px;">
+        We'll email a one-time code to <strong>{{ student.email }}</strong> to confirm the change.
+      </p>
+      <button type="button" class="btn-primary" id="btnRequestOtp">Send OTP</button>
+      <div class="pw-msg" id="step1Msg"></div>
+    </div>
+
+    <!-- Step 2: verify OTP + set new password -->
+    <div class="pw-step" id="pwStep2">
+      <div class="field">
+        <label>OTP</label>
+        <div class="input-shell"><input type="text" id="pwOtp" maxlength="6" placeholder="6-digit code"></div>
+      </div>
+      <div class="field">
+        <label>New Password</label>
+        <div class="input-shell"><input type="password" id="pwNew" placeholder="New password"></div>
+      </div>
+      <div class="field">
+        <label>Confirm New Password</label>
+        <div class="input-shell"><input type="password" id="pwConfirm" placeholder="Confirm new password"></div>
+      </div>
+      <button type="button" class="btn-primary" id="btnVerifyOtp">Change Password</button>
+      <button type="button" class="btn-ghost" id="btnResendOtp">Resend OTP</button>
+      <div class="pw-msg" id="step2Msg"></div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+(function () {
+  function getCookie(name) {
+    const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return match ? match.pop() : '';
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  function postJson(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+      credentials: 'same-origin',
+      body: JSON.stringify(body || {}),
+    }).then(async res => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw data;
+      return data;
+    });
+  }
+
+  const step1 = document.getElementById('pwStep1');
+  const step2 = document.getElementById('pwStep2');
+  const step1Msg = document.getElementById('step1Msg');
+  const step2Msg = document.getElementById('step2Msg');
+
+  function showMsg(el, text, kind) {
+    el.textContent = text;
+    el.className = 'pw-msg ' + kind;
+  }
+
+  function requestOtp(triggerBtn) {
+    triggerBtn.disabled = true;
+    postJson("{% url 'student-password-request-otp' %}")
+      .then(data => {
+        step1.classList.remove('active');
+        step2.classList.add('active');
+        showMsg(step2Msg, 'OTP sent to ' + (data.email_hint || 'your email') + '.', 'success');
+      })
+      .catch(err => {
+        showMsg(step1Msg, err.detail || 'Could not send OTP. Try again.', 'error');
+      })
+      .finally(() => { triggerBtn.disabled = false; });
+  }
+
+  document.getElementById('btnRequestOtp').addEventListener('click', function () {
+    requestOtp(this);
+  });
+  document.getElementById('btnResendOtp').addEventListener('click', function () {
+    requestOtp(this);
+  });
+
+  document.getElementById('btnVerifyOtp').addEventListener('click', function () {
+    const btn = this;
+    const otp = document.getElementById('pwOtp').value.trim();
+    const newPassword = document.getElementById('pwNew').value;
+    const confirmPassword = document.getElementById('pwConfirm').value;
+
+    if (newPassword !== confirmPassword) {
+      showMsg(step2Msg, 'Passwords do not match.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    postJson("{% url 'student-password-verify-otp' %}", {
+      otp: otp,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    })
+      .then(data => {
+        showMsg(step2Msg, data.detail || 'Password changed successfully.', 'success');
+        document.getElementById('pwOtp').value = '';
+        document.getElementById('pwNew').value = '';
+        document.getElementById('pwConfirm').value = '';
+      })
+      .catch(err => {
+        const msg = err.detail || (err.new_password && err.new_password[0]) || 'Something went wrong.';
+        showMsg(step2Msg, msg, 'error');
+      })
+      .finally(() => { btn.disabled = false; });
+  });
+})();
+</script>
+{% endblock %}

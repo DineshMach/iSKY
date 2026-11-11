@@ -1,0 +1,148 @@
+{% extends "Student/sidebar.html" %}
+{% load static %}
+
+{% block breadcrumb_label %}Timetable{% endblock %}
+
+{% block tab_css %}
+<style>
+    .tt-cell-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--primary-dark);
+    font-size: 12.5px;
+  }
+  .tt-cell-shortname {
+    font-size: 11px;
+    color: var(--ink-900);
+    margin-top: 2px;
+  }
+  .tt-cell-staff {
+    margin-top: 4px;
+    font-size: 11px;
+    border-radius: 4px;
+    padding: 4px;
+    align-items: center;
+    font-weight: 500;
+    background-color: rgba(51, 35, 74,0.04);
+    color: var(--primary-dark);
+  }
+  .tt-cell-staff svg {
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+    color: var(--ink-500);
+  }
+  .tt-panel { padding: 4px; }
+  .tt-scroll { overflow-x: auto; }
+  table.tt-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    min-width: 720px;
+  }
+  table.tt-table th, table.tt-table td {
+    border: 1px solid var(--line);
+    padding: 10px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.tt-table thead th {
+    background: var(--cream);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ink-500);
+  }
+  table.tt-table thead th.period-th {
+    text-align: center;
+  }
+  table.tt-table td.day-th {
+    font-weight: 600;
+    color: var(--ink-900);
+    background: var(--cream);
+    white-space: nowrap;
+  }
+  .tt-cell-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--primary-dark);
+    font-size: 12.5px;
+  }
+  .tt-cell-staff {
+    margin-top: 3px;
+    font-size: 11px;
+  }
+  .tt-cell-empty {
+    color: var(--line);
+    text-align: center;
+  }
+  .tt-period-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-500);
+    margin-top: 2px;
+  }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Timetable</h1>
+    <div class="college-line">
+      {% if classroom %}
+        <strong>{{ classroom.name }}</strong>{% if classroom.room_number %} &middot; Room {{ classroom.room_number }}{% endif %}
+      {% else %}
+        No classroom assigned yet
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="panel tt-panel">
+  <div class="panel-head">
+    <h2>Weekly schedule</h2>
+  </div>
+  <div class="panel-body">
+    {% if not classroom %}
+      <div class="empty-note">No timetable has been set up for you yet.</div>
+    {% elif not periods %}
+      <div class="empty-note">No periods have been scheduled yet.</div>
+    {% else %}
+      <div class="tt-scroll">
+        <table class="tt-table">
+          <thead>
+            <tr>
+              <th>Day</th>
+              {% for p in periods %}
+                <th class="period-th">
+                  Period {{ p.period_number }}
+                  <div class="tt-period-time">{{ p.start_time }}&ndash;{{ p.end_time }}</div>
+                </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td class="day-th">{{ row.label }}</td>
+                {% for cell in row.cells %}
+                  {% if cell %}
+                    <td style="text-align: center;align-items: center;">
+                    <div class="tt-cell-code">{{ cell.subject_short_name|default:cell.subject_name|slice:":2" }}</div>
+                    <div class=" day-th">{{ cell.subject_code }}</div>
+                    <div class="tt-cell-staff">{{ cell.staff_name }}</div>
+                    </td>
+                  {% else %}
+                    <td class="tt-cell-empty">&mdash;</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

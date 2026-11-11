@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}ISKY ERP · Student Login{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* STUDENT LOGIN */
+  .brand-panel.stu-brand {
+    background: linear-gradient(
+      155deg,
+      var(--secondary) 0%,
+      var(--primary-dark) 55%,
+      var(--primary) 130%
+    );
+  }
+
+  .stu-brand .chip {
+    background: rgba(198,161,91,0.16);
+    border-color: rgba(198,161,91,0.35);
+  }
+
+  .stu-brand .headline em {
+    color: var(--gold);
+  }
+
+  .stu-id-chip {
+    background: linear-gradient(155deg, var(--gold), #a67f3c);
+    box-shadow: 0 10px 24px -8px rgba(198,161,91,0.5);
+  }
+
+  .stu-pill-tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    margin-bottom: 22px;
+  }
+
+  .stu-pill-tabs input {
+    display: none;
+  }
+
+  .stu-pill-tabs label {
+    flex: 1;
+    text-align: center;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--ink-500);
+    padding: 9px 6px;
+    border-radius: 999px;
+    transition: background .15s ease, color .15s ease;
+  }
+
+  .stu-pill-tabs input:checked + label {
+    background: var(--secondary);
+    color: #fff;
+  }
+
+  .form-panel .btn-login.stu-submit {
+    background: linear-gradient(135deg, var(--gold), #b6903f);
+    box-shadow: 0 12px 26px -10px rgba(198,161,91,0.55);
+  }
+
+  .form-panel .btn-login.stu-submit:hover {
+    background: linear-gradient(135deg, #b6903f, var(--gold));
+  }
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<div class="stage">
+
+  <!-- LEFT BRAND PANEL -->
+  <div class="brand-panel stu-brand">
+
+    <div class="brand-mark">
+
+      <div class="brand-badge">
+        <svg viewBox="0 0 24 24" fill="none"
+             stroke="#fff" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 10 12 5 2 10l10 5 10-5Z"/>
+          <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>
+        </svg>
+      </div>
+
+      <div class="brand-text">
+        <div class="name">ISKY</div>
+        <div class="sub">STUDENT PORTAL</div>
+      </div>
+
+    </div>
+
+    <h1 class="headline">
+      Hey there,<br>
+      <em>student</em>.
+    </h1>
+
+    <p class="lede">
+      Sign in to check your attendance, timetable, results,
+      and department updates — all in one place.
+    </p>
+
+    <div class="capability-rail">
+      <span class="chip">ATTENDANCE</span>
+      <span class="chip">TIMETABLE</span>
+      <span class="chip">RESULTS</span>
+      <span class="chip">NOTICES</span>
+    </div>
+
+    <div class="status-line">
+      <span class="status-dot"></span>
+      All systems operational · Secure session · TLS 1.3
+    </div>
+
+  </div>
+
+
+  <!-- RIGHT FORM PANEL -->
+  <div class="form-panel">
+
+    <div class="form-inner">
+
+      <div class="id-chip stu-id-chip">
+        <svg viewBox="0 0 24 24" fill="none"
+             stroke="#fff" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 10 12 5 2 10l10 5 10-5Z"/>
+          <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>
+          <path d="M22 10v6"/>
+        </svg>
+      </div>
+
+      <h1>Student Login</h1>
+
+      <p class="desc">
+        Sign in to access your student dashboard
+      </p>
+
+
+      <!-- DJANGO MESSAGES -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="{% if message.tags == 'error' %}error-banner{% else %}success-banner{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+
+      <!-- LOGIN FORM -->
+      <form id="studentLoginForm"
+            method="POST"
+            action="{% url 'student_login' %}">
+
+        {% csrf_token %}
+
+
+        <!-- LOGIN METHOD -->
+        <div class="stu-pill-tabs">
+
+          <!-- <input type="radio"
+                 id="stu-via-reg"
+                 name="login_via"
+                 value="register_number"
+                 checked>
+
+          <label for="stu-via-reg">
+            Register No.
+          </label> -->
+
+
+          <input type="radio"
+                 id="stu-via-email"
+                 name="login_via"
+                 value="email" checked>
+
+          <label for="stu-via-email">
+            Email
+          </label>
+
+        </div>
+
+
+        <!-- LOGIN ID -->
+        <div class="field">
+
+          <label for="stuLoginId">
+            Email ID
+          </label>
+
+          <div class="input-shell">
+
+            <svg viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+            </svg>
+
+            <input
+              id="stuLoginId"
+              name="login_id"
+              type="text"
+              placeholder="e.g. abc@gmail.com"
+              autocomplete="username"
+              required
+            >
+
+          </div>
+
+        </div>
+
+
+        <!-- PASSWORD -->
+        <div class="field">
+
+          <label for="stuPwd">
+            Password
+          </label>
+
+          <div class="input-shell">
+
+            <svg viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="10" width="16" height="10" rx="2"/>
+              <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+            </svg>
+
+            <input
+              id="stuPwd"
+              name="password"
+              type="password"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+              required
+            >
+
+            <button type="button"
+                    class="toggle-visibility"
+                    id="stuToggleBtn"
+                    aria-label="Show password">
+
+              <svg id="stuEyeIcon"
+                   viewBox="0 0 24 24"
+                   fill="none"
+                   stroke="currentColor"
+                   stroke-width="1.8"
+                   stroke-linecap="round"
+                   stroke-linejoin="round">
+
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/>
+                <circle cx="12" cy="12" r="3"/>
+
+              </svg>
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- REMEMBER / FORGOT -->
+        <div class="row-between">
+
+          <label class="remember">
+            <input type="checkbox" name="remember" checked>
+            Remember me
+          </label>
+
+          <!-- <a href="#" class="forgot">
+            Forgot password?
+          </a> -->
+
+        </div>
+
+
+        <!-- SUBMIT -->
+        <button type="submit" class="btn-login stu-submit">
+
+          Sign In
+
+          <svg viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6"/>
+          </svg>
+
+        </button>
+
+      </form>
+
+
+      <!-- <div class="divider">OR</div> -->
+
+      <p class="help">
+        <a href="{% url 'home' %}">
+          Go to Home
+        </a>
+      </p>
+
+      <!-- <p class="help">
+        First time here?
+        <a href="#">
+          Activate your account
+        </a>
+      </p> -->
+
+      <p class="foot-note">
+        © 2026 ISKY · All rights reserved
+      </p>
+
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script>
+
+  // PASSWORD VISIBILITY
+  const stuToggleBtn = document.getElementById('stuToggleBtn');
+  const stuPwd = document.getElementById('stuPwd');
+  const stuEyeIcon = document.getElementById('stuEyeIcon');
+
+  stuToggleBtn.addEventListener('click', () => {
+
+    const isPwd = stuPwd.type === 'password';
+
+    stuPwd.type = isPwd ? 'text' : 'password';
+
+    stuEyeIcon.innerHTML = isPwd
+      ? '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.6 19.6 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a19.7 19.7 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>'
+      : '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>';
+
+    stuToggleBtn.setAttribute(
+      'aria-label',
+      isPwd ? 'Hide password' : 'Show password'
+    );
+
+  });
+
+
+  // LOGIN METHOD TOGGLE
+  const viaReg = document.getElementById('stu-via-reg');
+  const viaEmail = document.getElementById('stu-via-email');
+
+  const loginIdInput = document.getElementById('stuLoginId');
+
+  const loginIdLabel = document.querySelector(
+    'label[for="stuLoginId"]'
+  );
+
+
+  function syncLoginField() {
+
+    if (viaEmail.checked) {
+
+      loginIdInput.placeholder = 'name@college.edu';
+      loginIdInput.type = 'email';
+
+      loginIdLabel.textContent = 'Email';
+
+    } else {
+
+      loginIdInput.placeholder = 'e.g. 24CS042';
+      loginIdInput.type = 'text';
+
+      loginIdLabel.textContent = 'Register Number';
+
+    }
+
+  }
+
+
+  viaReg.addEventListener('change', syncLoginField);
+  viaEmail.addEventListener('change', syncLoginField);
+
+
+  // INITIALIZE LOGIN FIELD
+  syncLoginField();
+
+</script>
+
+{% endblock %}

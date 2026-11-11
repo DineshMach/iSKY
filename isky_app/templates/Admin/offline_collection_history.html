@@ -1,0 +1,341 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Offline Collection History{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Offline Collection History</span>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Offline Collection History</h1>
+    <div class="college-line">Every fee payment collected in person — cash, cheque, DD, or bank transfer — across all invoices</div>
+  </div>
+</div>
+
+<div id="form-alert" class="form-alert" style="display:none;"></div>
+
+<!-- SUMMARY -->
+<div class="preview-summary" id="collection-summary">
+  <div><div class="num" id="summary-total">₹0</div><div class="lbl">Total Collected</div></div>
+  <div><div class="num" id="summary-pending">0</div><div class="lbl">Pending Clearance</div></div>
+  <div><div class="num" id="summary-count">0</div><div class="lbl">Records Matched</div></div>
+</div>
+
+<!-- FILTERS -->
+<section class="panel" style="margin-top: 20px;">
+  <div class="panel-head"><h2>Filters</h2></div>
+  <div class="panel-body">
+    <div class="form-grid-4">
+
+      <div class="field">
+        <label for="f-department">Department</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+          <select id="f-department">
+            <option value="">All departments</option>
+            {% for dept in departments %}
+            <option value="{{ dept.id }}">{{ dept.name }} ({{ dept.short_name }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-year">Year</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/></svg>
+          <select id="f-year">
+            <option value="">Any year</option>
+            <option value="1">1st Year</option>
+            <option value="2">2nd Year</option>
+            <option value="3">3rd Year</option>
+            <option value="4">4th Year</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-mode">Payment Mode</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          <select id="f-mode">
+            <option value="">Any mode</option>
+            <option value="cash">Cash</option>
+            <option value="cheque">Cheque</option>
+            <option value="dd">Demand Draft</option>
+            <option value="bank_transfer">Bank Transfer</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-status">Status</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg>
+          <select id="f-status">
+            <option value="">Any status</option>
+            <option value="pending">Pending</option>
+            <option value="success">Success</option>
+            <option value="failed">Failed</option>
+            <option value="refunded">Refunded</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-collector">Collected By</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>
+          <select id="f-collector">
+            <option value="">Anyone</option>
+            {% for c in collectors %}
+            <option value="{{ c.id }}">{{ c.first_name }} {{ c.last_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-date-from">From</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+          <input type="date" id="f-date-from">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-date-to">To</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+          <input type="date" id="f-date-to">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-search">Search</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="f-search" placeholder="Receipt, admission no., cheque no…">
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section class="panel" style="margin-top: 20px;">
+  <div class="panel-head"><h2>Collections</h2></div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead>
+        <tr>
+          <th>Receipt No.</th><th>Student</th><th>Dept</th><th>Year</th><th>Invoice</th>
+          <th>Mode</th><th>Amount</th><th>Cheque/DD No.</th><th>Bank</th>
+          <th>Status</th><th>Collected By</th><th>Date</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="collections-body">
+        <tr><td colspan="13"><p class="empty-note">Loading…</p></td></tr>
+      </tbody>
+    </table>
+    <div class="pager" id="pager" style="display:none;">
+      <button type="button" class="btn-ghost" id="prev-page-btn">← Previous</button>
+      <span id="page-indicator"></span>
+      <button type="button" class="btn-ghost" id="next-page-btn">Next →</button>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block tab_js %}
+<style>
+  .form-alert { margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; font-size: 14px; }
+  .form-alert.error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .form-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+
+  .form-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .form-grid-4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .form-grid-4 { grid-template-columns: 1fr; } }
+
+  .preview-summary {
+    display: flex; gap: 28px; align-items: center;
+    padding: 16px 20px; background: #f0fdf4; border: 1px solid #bbf7d0;
+    border-radius: 12px;
+  }
+  .preview-summary .num { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; color: #15803d; line-height: 1; }
+  .preview-summary .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-500); margin-top: 4px; }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+    text-transform: uppercase; letter-spacing: .03em;
+  }
+  .status-pill.success { background: var(--green-soft, #f0fdf4); color: var(--secondary-light, #15803d); }
+  .status-pill.pending { background: var(--amber-soft, #fffbeb); color: var(--amber, #b45309); }
+  .status-pill.failed { background: var(--red-soft, #fef2f2); color: var(--red, #b91c1c); }
+  .status-pill.refunded { background: #eef2ff; color: #4338ca; }
+
+  .pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; }
+  .pager span { font-size: 12.5px; color: var(--ink-500); font-weight: 600; }
+
+  .mark-cleared-btn { padding: 5px 11px; font-size: 12px; }
+</style>
+
+<script>
+(function () {
+  const alertBox = document.getElementById('form-alert');
+  const tbody = document.getElementById('collections-body');
+  const pager = document.getElementById('pager');
+  const pageIndicator = document.getElementById('page-indicator');
+  const prevBtn = document.getElementById('prev-page-btn');
+  const nextBtn = document.getElementById('next-page-btn');
+
+  const summaryTotal = document.getElementById('summary-total');
+  const summaryPending = document.getElementById('summary-pending');
+  const summaryCount = document.getElementById('summary-count');
+
+  const fDept = document.getElementById('f-department');
+  const fYear = document.getElementById('f-year');
+  const fMode = document.getElementById('f-mode');
+  const fStatus = document.getElementById('f-status');
+  const fCollector = document.getElementById('f-collector');
+  const fDateFrom = document.getElementById('f-date-from');
+  const fDateTo = document.getElementById('f-date-to');
+  const fSearch = document.getElementById('f-search');
+
+  let currentPage = 1;
+  let hasNext = false;
+  let searchTimer = null;
+
+  function getCsrfToken() {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+  }
+
+  function showAlert(message, type) {
+    alertBox.textContent = message;
+    alertBox.className = `form-alert ${type}`;
+    alertBox.style.display = 'block';
+    alertBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function jsonFetch(url, opts = {}) {
+    return fetch(url, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken(), ...(opts.headers || {}) },
+    }).then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw { status: res.status, data };
+      return data;
+    });
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function buildQuery(page) {
+    const params = new URLSearchParams();
+    if (fDept.value) params.set('department', fDept.value);
+    if (fYear.value) params.set('year', fYear.value);
+    if (fMode.value) params.set('payment_mode', fMode.value);
+    if (fStatus.value) params.set('status', fStatus.value);
+    if (fCollector.value) params.set('collected_by', fCollector.value);
+    if (fDateFrom.value) params.set('date_from', fDateFrom.value);
+    if (fDateTo.value) params.set('date_to', fDateTo.value);
+    if (fSearch.value.trim()) params.set('q', fSearch.value.trim());
+    params.set('page', page);
+    return params.toString();
+  }
+
+  function rowHtml(p) {
+    const clearBtn = p.status === 'pending'
+      ? `<button type="button" class="btn-ghost mark-cleared-btn" data-id="${p.id}">Mark Cleared</button>`
+      : '—';
+    return `
+      <td>${p.receipt_number}</td>
+      <td>${p.student_name} <span style="color:var(--ink-500); font-size:12px;">(${p.admission_number})</span></td>
+      <td>${p.department_name || '—'}</td>
+      <td>${p.year || '—'}</td>
+      <td>${p.invoice_number || '—'}</td>
+      <td>${p.payment_mode_display}</td>
+      <td>₹${p.amount}</td>
+      <td>${p.cheque_or_dd_number || '—'}</td>
+      <td>${p.bank_name || '—'}</td>
+      <td><span class="status-pill ${p.status}">${p.status}</span></td>
+      <td>${p.collected_by_name || '—'}</td>
+      <td>${formatDate(p.created_at)}</td>
+      <td>${clearBtn}</td>`;
+  }
+
+  async function loadCollections(page = 1) {
+    tbody.innerHTML = '<tr><td colspan="13"><p class="empty-note">Loading…</p></td></tr>';
+    try {
+      const data = await (await fetch(`{% url 'offline-collection-list' %}?${buildQuery(page)}`)).json();
+      currentPage = data.page;
+      hasNext = data.has_next;
+
+      summaryTotal.textContent = '₹' + Number(data.total_collected).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+      summaryPending.textContent = data.pending_count;
+      summaryCount.textContent = data.count;
+
+      if (!data.results.length) {
+        tbody.innerHTML = '<tr><td colspan="13"><p class="empty-note">No offline collections match these filters.</p></td></tr>';
+        pager.style.display = 'none';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      data.results.forEach((p) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = rowHtml(p);
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll('.mark-cleared-btn').forEach((btn) => {
+        btn.addEventListener('click', () => markCleared(btn.dataset.id));
+      });
+
+      pager.style.display = (data.count > data.page_size) ? 'flex' : 'none';
+      pageIndicator.textContent = `Page ${currentPage}`;
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = !hasNext;
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="13"><p class="empty-note">Could not load collections.</p></td></tr>';
+    }
+  }
+
+  async function markCleared(paymentId) {
+    if (!confirm('Confirm this cheque/DD has cleared and mark the payment as received?')) return;
+    try {
+      const url = `{% url 'offline-collection-mark-cleared' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', paymentId);
+      await jsonFetch(url, { method: 'POST', body: JSON.stringify({}) });
+      showAlert('Payment marked as cleared.', 'success');
+      loadCollections(currentPage);
+    } catch (err) {
+      showAlert((err.data && (err.data.detail || Object.values(err.data).flat().join(' '))) || 'Could not update payment.', 'error');
+    }
+  }
+
+  [fDept, fYear, fMode, fStatus, fCollector, fDateFrom, fDateTo].forEach((el) =>
+    el.addEventListener('change', () => loadCollections(1))
+  );
+  fSearch.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => loadCollections(1), 300);
+  });
+  prevBtn.addEventListener('click', () => { if (currentPage > 1) loadCollections(currentPage - 1); });
+  nextBtn.addEventListener('click', () => { if (hasNext) loadCollections(currentPage + 1); });
+
+  loadCollections(1);
+})();
+</script>
+{% endblock %}

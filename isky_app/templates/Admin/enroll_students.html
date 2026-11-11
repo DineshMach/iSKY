@@ -1,0 +1,339 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Enroll Students{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'classroom-take-attendance' %}" class="crumb-link">Attendance</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Enroll Students</span>
+{% endblock %}
+
+{% block main_content %}
+<style>
+  .en-table { width:100%; border-collapse:collapse; }
+  .en-table th { text-align:left; font-size:11.5px; font-weight:600; color:var(--ink-500); padding:8px 10px; border-bottom:1px solid var(--line); }
+  .en-table td { font-size:13px; padding:11px 10px; border-bottom:1px solid var(--line); color:var(--ink-900); }
+  .en-table tr:last-child td { border-bottom:none; }
+  .en-table tr:hover td { background:var(--cream); }
+  .en-badge { font-size:11px; font-weight:600; padding:3px 10px; border-radius:99px; background:var(--gold-soft); color:var(--primary-dark); white-space:nowrap; }
+  .en-badge.muted { background:var(--cream); color:var(--ink-500); }
+  .en-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>Enroll Students</h1>
+    <div class="college-line">Assign existing students to a classroom for the academic year</div>
+  </div>
+  <a href="{% url 'classroom-take-attendance' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Attendance
+  </a>
+</div>
+
+<form id="enrollForm" autocomplete="off">
+
+  {# ---------------- Select classroom ---------------- #}
+  <section class="panel" style="margin-bottom:18px;">
+    <div class="panel-head"><h2>Select Classroom</h2></div>
+    <div class="panel-body">
+      <div class="form-grid-2">
+
+        <div class="field">
+          <label for="en-academic-year">Academic Year</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <select id="en-academic-year">
+              {% for ay in academic_years %}
+              <option value="{{ ay.id }}" {% if current_academic_year and ay.id == current_academic_year.id %}selected{% endif %}>
+                {{ ay.name }}{% if ay.is_current %} (Current){% endif %}
+              </option>
+              {% empty %}
+              <option value="">No academic year</option>
+              {% endfor %}
+            </select>
+          </div>
+          <p class="field-hint">Only the current academic year accepts new enrollments.</p>
+        </div>
+
+        <div class="field">
+          <label for="en-department">Department</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <select id="en-department" required>
+              <option value="" disabled selected>Select department</option>
+              {% for dept in departments %}
+              <option value="{{ dept.id }}">{{ dept.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="en-year">Year</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            <select id="en-year" required>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">4th Year</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="en-semester">Semester</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <select id="en-semester" required></select>
+          </div>
+          <p class="field-hint">Options update automatically based on the selected year.</p>
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+          <label for="en-classroom">Classroom / Section</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
+            <select id="en-classroom" required>
+              <option value="" disabled selected>Select department first</option>
+            </select>
+          </div>
+          <p class="field-hint" id="en-classroom-hint">No classroom? Create it first from the Classrooms page.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ---------------- Students ---------------- #}
+  <section class="panel" id="studentsPanel" style="display:none;">
+    <div class="panel-head">
+      <h2>Students</h2>
+      <span class="field-hint" style="margin:0;" id="en-summary"></span>
+    </div>
+    <div class="panel-body">
+      <div class="en-toolbar">
+        <label style="display:flex; align-items:center; gap:8px; font-weight:500; font-size:13px;">
+          <input type="checkbox" id="en-select-all">
+          <span>Select all not yet enrolled</span>
+        </label>
+        <span class="attn-count" id="en-selected-count" style="font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:600; color:var(--primary-dark); background:var(--gold-soft); padding:4px 10px; border-radius:99px;">0 selected</span>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="en-table">
+          <thead>
+            <tr>
+              <th style="width:36px;"></th>
+              <th>Roll No.</th>
+              <th>Admission No.</th>
+              <th>Name</th>
+              <th>Section</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="en-rows"></tbody>
+        </table>
+      </div>
+      <p class="empty-note" id="en-empty" style="display:none;">
+        No active students found for this department, year and semester.
+      </p>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <span id="enMsg" class="field-hint" style="margin:0;"></span>
+    <a href="{% url 'classroom-take-attendance' %}" class="btn-ghost">Cancel</a>
+    <button type="submit" id="enSubmit" class="btn-primary" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Enroll Selected
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    const URLS = {
+      classrooms: "{% url 'enrollment-classrooms' %}",
+      students: "{% url 'enrollment-students' %}",
+      save: "{% url 'enrollment-save' %}",
+    };
+    const SEMESTERS_BY_YEAR = {
+      1: [[1, '1st Semester'], [2, '2nd Semester']],
+      2: [[3, '3rd Semester'], [4, '4th Semester']],
+      3: [[5, '5th Semester'], [6, '6th Semester']],
+      4: [[7, '7th Semester'], [8, '8th Semester']],
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const ay = $('en-academic-year'), dept = $('en-department'), year = $('en-year');
+    const sem = $('en-semester'), room = $('en-classroom');
+    const panel = $('studentsPanel'), rows = $('en-rows'), empty = $('en-empty');
+    const selectAll = $('en-select-all'), selectedCount = $('en-selected-count');
+    const summary = $('en-summary'), msg = $('enMsg'), submitBtn = $('enSubmit');
+
+    function getCookie(name) {
+      const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return m ? m.pop() : '';
+    }
+    function formatErrors(data) {
+      if (!data) return 'Could not save.';
+      if (typeof data === 'string') return data;
+      if (Array.isArray(data)) return data.map(formatErrors).join(' ');
+      if (data.detail) return data.detail;
+      return Object.entries(data).map(([k, v]) => k.replace(/_/g, ' ') + ': ' + formatErrors(v)).join(' ');
+    }
+
+    // ---------- Semester follows year ----------
+    function syncSemesters() {
+      sem.innerHTML = '';
+      (SEMESTERS_BY_YEAR[year.value] || []).forEach(([v, label]) => {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = label;
+        sem.appendChild(o);
+      });
+    }
+
+    // ---------- Classrooms for the chosen filters ----------
+    async function loadClassrooms() {
+      resetStudents();
+      if (!dept.value || !ay.value) return;
+      const qs = new URLSearchParams({ academic_year: ay.value, department: dept.value, year: year.value, semester: sem.value });
+      room.innerHTML = '<option value="" disabled selected>Loading…</option>';
+      try {
+        const res = await fetch(URLS.classrooms + '?' + qs, { credentials: 'same-origin' });
+        const list = await res.json();
+        room.innerHTML = '';
+        if (!Array.isArray(list) || !list.length) {
+          room.innerHTML = '<option value="" disabled selected>No classroom for this selection</option>';
+          return;
+        }
+        room.innerHTML = '<option value="" disabled selected>Select classroom</option>';
+        list.forEach((c) => {
+          const o = document.createElement('option');
+          o.value = c.id;
+          o.textContent = c.name + (c.section ? ' · Section ' + c.section : '') + ' (' + c.student_count + ' enrolled)';
+          room.appendChild(o);
+        });
+      } catch (e) {
+        room.innerHTML = '<option value="" disabled selected>Could not load classrooms</option>';
+      }
+    }
+
+    // ---------- Students ----------
+    function resetStudents() {
+      panel.style.display = 'none';
+      rows.innerHTML = '';
+      selectAll.checked = false;
+      updateCount();
+    }
+
+    function cell(text) {
+      const td = document.createElement('td');
+      td.textContent = text || '—';
+      return td;
+    }
+
+    async function loadStudents() {
+      resetStudents();
+      if (!room.value) return;
+      msg.textContent = 'Loading students…';
+      try {
+        const res = await fetch(URLS.students + '?classroom=' + encodeURIComponent(room.value), { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!res.ok) { msg.textContent = formatErrors(data); return; }
+        msg.textContent = '';
+        renderStudents(data.students);
+      } catch (e) {
+        msg.textContent = 'Network error while loading students.';
+      }
+    }
+
+    function renderStudents(students) {
+      rows.innerHTML = '';
+      panel.style.display = '';
+      empty.style.display = students.length ? 'none' : '';
+      let enrolled = 0;
+
+      students.forEach((s) => {
+        const tr = document.createElement('tr');
+        const tdCheck = document.createElement('td');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.value = s.id; cb.className = 'en-check';
+        if (s.enrolled_here) { cb.disabled = true; cb.checked = true; enrolled++; }
+        cb.addEventListener('change', updateCount);
+        tdCheck.appendChild(cb);
+        tr.appendChild(tdCheck);
+
+        tr.appendChild(cell(s.roll_number));
+        tr.appendChild(cell(s.admission_number));
+        tr.appendChild(cell(s.name));
+        tr.appendChild(cell(s.section));
+
+        const tdStatus = document.createElement('td');
+        const badge = document.createElement('span');
+        badge.className = 'en-badge';
+        if (s.enrolled_here) { badge.textContent = 'Enrolled'; }
+        else if (s.enrolled_elsewhere) { badge.className = 'en-badge muted'; badge.textContent = 'In ' + s.enrolled_elsewhere + ' (will move)'; }
+        else { badge.className = 'en-badge muted'; badge.textContent = 'Not enrolled'; }
+        tdStatus.appendChild(badge);
+        tr.appendChild(tdStatus);
+        rows.appendChild(tr);
+      });
+
+      summary.textContent = students.length + ' student' + (students.length === 1 ? '' : 's') + ' · ' + enrolled + ' already enrolled';
+      updateCount();
+    }
+
+    function selectable() { return Array.from(rows.querySelectorAll('.en-check:not(:disabled)')); }
+    function updateCount() {
+      const n = selectable().filter((c) => c.checked).length;
+      selectedCount.textContent = n + ' selected';
+      submitBtn.disabled = n === 0;
+    }
+    selectAll.addEventListener('change', () => {
+      selectable().forEach((c) => { c.checked = selectAll.checked; });
+      updateCount();
+    });
+
+    // ---------- Wiring ----------
+    year.addEventListener('change', () => { syncSemesters(); loadClassrooms(); });
+    [ay, dept, sem].forEach((el) => el.addEventListener('change', loadClassrooms));
+    room.addEventListener('change', loadStudents);
+    syncSemesters();
+
+    // ---------- Submit ----------
+    $('enrollForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const ids = selectable().filter((c) => c.checked).map((c) => c.value);
+      if (!ids.length) return;
+      submitBtn.disabled = true;
+      msg.textContent = 'Saving…';
+      try {
+        const res = await fetch(URLS.save, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+          body: JSON.stringify({ classroom: room.value, student_ids: ids }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          msg.textContent = data.message;
+          await loadStudents();
+          msg.textContent = data.message;
+          return;
+        }
+        msg.textContent = formatErrors(data);
+      } catch (err) {
+        msg.textContent = 'Network error while saving.';
+      } finally {
+        updateCount();
+      }
+    });
+  })();
+</script>
+{% endblock %}

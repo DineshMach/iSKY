@@ -1,0 +1,102 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Staff{% endblock %}
+{% block breadcrumb_label %}Staff{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Staff</h1>
+    <div class="college-line">Department-wise staff directory · HOD shown separately</div>
+  </div>
+  {% if  can_edit %}
+  <a href="{% url 'create-staff' %}" class="btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    Create Staff
+  </a>
+  {% endif %}
+</div>
+
+{% for group in department_groups %}
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>{{ group.department.name }}</h2>
+    <span class="field-hint" style="margin:0;">{{ group.staff_count }} staff member{{ group.staff_count|pluralize }}</span>
+  </div>
+
+  <div class="panel-body">
+
+    <!-- ---------- HOD ---------- -->
+    <div class="form-section-title" style="margin-top:0;">Head of Department</div>
+    {% if group.hod %}
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead>
+          <tr><th>Name</th><th>Role</th><th>Designation</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="dir-item" style="border:none;padding:0;">
+                <div class="dir-avatar">{{ group.hod.college_user.user.first_name|slice:":2"|upper }}</div>
+                <div class="dir-info">
+                  <div class="dn">{{ group.hod.college_user.user.first_name }} {{ group.hod.college_user.user.last_name }}</div>
+                  <div class="dm">{{ group.hod.college_user.user.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ group.hod.get_staff_role_display }}</td>
+            <td>{{ group.hod.designation|default:"—" }}</td>
+            <td><span class="pill {{ group.hod.college_user.status|default:'active' }}">{{ group.hod.college_user.get_status_display }}</span></td>
+            <td><a href="{% url 'staff-detail' group.hod.id %}" class="view-all">Manage</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty-note">No HOD assigned yet for this department.</p>
+    {% endif %}
+
+    <!-- ---------- Staff ---------- -->
+    <div class="form-section-title">Staff Members</div>
+    {% if group.staff %}
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead>
+          <tr><th>Name</th><th>Role</th><th>Designation</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for s in group.staff %}
+          <tr>
+            <td>
+              <div class="dir-item" style="border:none;padding:0;">
+                <div class="dir-avatar">{{ s.college_user.user.first_name|slice:":2"|upper }}</div>
+                <div class="dir-info">
+                  <div class="dn">{{ s.college_user.user.first_name }} {{ s.college_user.user.last_name }}</div>
+                  <div class="dm">{{ s.college_user.user.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ s.get_staff_role_display }}</td>
+            <td>{{ s.designation|default:"—" }}</td>
+            <td><span class="pill {{ s.college_user.status|default:'active' }}">{{ s.college_user.get_status_display }}</span></td>
+            <td><a href="{% url 'staff-detail' s.id %}" class="view-all">Manage</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty-note">No staff members in this department yet.</p>
+    {% endif %}
+
+  </div>
+</section>
+{% empty %}
+<section class="panel">
+  <div class="panel-body">
+    <p class="empty-note">No departments found. Create a department first, then add staff.</p>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

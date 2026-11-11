@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecurePay Checkout (Test Mode)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gw-primary:#1f2544; --gw-accent:#c6a15b; --gw-line:#e6e2da;
+    --gw-bg:#f4f2ee; --gw-ink:#1c1c22; --gw-ink-500:#6b6b76;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; font-family:'Inter',sans-serif; background:var(--gw-bg); color:var(--gw-ink);
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding: 32px 16px;
+  }
+  .gw-brand{
+    display:flex; align-items:center; gap:8px; margin-bottom:22px; color:var(--gw-primary); font-weight:700; font-size:1.05rem;
+  }
+  .gw-brand .dot{ width:8px; height:8px; border-radius:50%; background:var(--gw-accent); }
+  .gw-testbadge{
+    font-family:'JetBrains Mono',monospace; font-size:0.66rem; letter-spacing:0.05em; text-transform:uppercase;
+    background:#fff7e6; color:#92400e; border:1px solid #fde68a; padding:3px 9px; border-radius:999px; margin-bottom:22px;
+  }
+  .gw-card{
+    background:#fff; border:1px solid var(--gw-line); border-radius:16px; width:100%; max-width:440px;
+    box-shadow: 0 10px 40px rgba(31,37,68,0.08); overflow:hidden;
+  }
+  .gw-card-head{ padding:22px 26px; border-bottom:1px solid var(--gw-line); }
+  .gw-card-head .label{ font-size:0.74rem; color:var(--gw-ink-500); text-transform:uppercase; letter-spacing:0.04em; }
+  .gw-card-head .amount{ font-size:2rem; font-weight:700; color:var(--gw-primary); margin-top:4px; }
+  .gw-card-head .payee{ font-size:0.86rem; color:var(--gw-ink-500); margin-top:6px; }
+  .gw-card-body{ padding:22px 26px; }
+
+  .gw-field-label{ font-size:0.78rem; font-weight:600; color:var(--gw-ink); margin-bottom:10px; display:block; }
+  .gw-mode-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:24px; }
+  .gw-mode-option{
+    display:flex; align-items:center; gap:10px; border:1.5px solid var(--gw-line); border-radius:10px;
+    padding:12px 14px; cursor:pointer; transition: border-color .12s ease, background .12s ease;
+  }
+  .gw-mode-option:hover{ border-color: var(--gw-accent); }
+  .gw-mode-option input{ accent-color: var(--gw-primary); width:16px; height:16px; }
+  .gw-mode-option.selected{ border-color: var(--gw-primary); background:#f8f7fb; }
+  .gw-mode-option label{ font-size:0.88rem; font-weight:500; cursor:pointer; flex:1; }
+
+  .gw-txn-ref{
+    font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--gw-ink-500);
+    background:#f4f2ee; border-radius:8px; padding:8px 12px; margin-bottom:22px; word-break:break-all;
+  }
+
+  .gw-actions{ display:flex; gap:10px; }
+  .gw-btn{
+    flex:1; padding:13px 16px; border-radius:10px; font-weight:600; font-size:0.9rem; cursor:pointer;
+    border:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .gw-btn.success{ background:#15803d; color:#fff; }
+  .gw-btn.success:hover{ background:#136c34; }
+  .gw-btn.fail{ background:#fff; color:#b91c1c; border:1.5px solid #fecaca; }
+  .gw-btn.fail:hover{ background:#fef2f2; }
+  .gw-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+
+  .gw-status-msg{
+    margin: 0 26px 20px; padding:10px 14px; border-radius:8px; font-size:0.82rem; display:none;
+  }
+  .gw-status-msg.error{ background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; display:block; }
+  .gw-status-msg.info{ background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; display:block; }
+
+  .gw-footer{ margin-top:18px; font-size:0.72rem; color:var(--gw-ink-500); text-align:center; max-width:440px; }
+</style>
+</head>
+<body>
+
+  <div class="gw-brand"><span class="dot"></span> SecurePay</div>
+  <div class="gw-testbadge">Test Mode — No real money moves here</div>
+
+  <div class="gw-card">
+    <div class="gw-card-head">
+      <div class="label">Amount to pay</div>
+      <div class="amount">₹{{ amount }}</div>
+      <div class="payee">Paying for {{ invoice_number }} · {{ payee_name }}</div>
+    </div>
+
+    <div id="gw-status-msg" class="gw-status-msg"></div>
+
+    <div class="gw-card-body">
+      <span class="gw-field-label">Choose payment mode</span>
+      <div class="gw-mode-list" id="gw-mode-list">
+        {% for value, display in payment_mode_options %}
+        <label class="gw-mode-option" data-value="{{ value }}">
+          <input type="radio" name="payment_mode" value="{{ value }}" {% if forloop.first %}checked{% endif %}>
+          <label style="margin:0;">{{ display }}</label>
+        </label>
+        {% endfor %}
+      </div>
+
+      <div class="gw-txn-ref">Txn Ref: {{ transaction_id }}</div>
+
+      <div class="gw-actions">
+        <button type="button" class="gw-btn success" id="gw-success-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M20 6 9 17l-5-5"/></svg>
+          Simulate Success
+        </button>
+        <button type="button" class="gw-btn fail" id="gw-fail-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          Simulate Failure
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <p class="gw-footer">This is a simulated checkout standing in until a real payment gateway is integrated. Choosing a mode and an outcome here plays the same role a real gateway callback would.</p>
+
+<script>
+(function () {
+  const modeList = document.getElementById('gw-mode-list');
+  const successBtn = document.getElementById('gw-success-btn');
+  const failBtn = document.getElementById('gw-fail-btn');
+  const statusMsg = document.getElementById('gw-status-msg');
+
+  function getCsrfToken() {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+  }
+
+  function syncSelectedStyles() {
+    modeList.querySelectorAll('.gw-mode-option').forEach((opt) => {
+      const input = opt.querySelector('input');
+      opt.classList.toggle('selected', input.checked);
+    });
+  }
+  modeList.addEventListener('change', syncSelectedStyles);
+  syncSelectedStyles();
+
+  function showStatus(message, type) {
+    statusMsg.textContent = message;
+    statusMsg.className = `gw-status-msg ${type}`;
+  }
+
+  function selectedMode() {
+    const checked = modeList.querySelector('input[name="payment_mode"]:checked');
+    return checked ? checked.value : null;
+  }
+
+  async function submitOutcome(result) {
+    const paymentMode = selectedMode();
+    if (!paymentMode) {
+      showStatus('Choose a payment mode first.', 'error');
+      return;
+    }
+
+    successBtn.disabled = true;
+    failBtn.disabled = true;
+    showStatus(result === 'success' ? 'Processing payment…' : 'Recording failed attempt…', 'info');
+
+    try {
+      const response = await fetch('/api/payments/gateway/{{ transaction_id }}/callback/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({ result: result, payment_mode: paymentMode }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        showStatus(data.detail || 'Something went wrong. Please try again.', 'error');
+        successBtn.disabled = false;
+        failBtn.disabled = false;
+        return;
+      }
+
+      showStatus(
+        result === 'success' ? 'Payment successful! Redirecting…' : 'Payment failed. Redirecting…',
+        result === 'success' ? 'info' : 'error'
+      );
+      window.location.href = data.redirect_url;
+    } catch (err) {
+      showStatus('Network error — please try again.', 'error');
+      successBtn.disabled = false;
+      failBtn.disabled = false;
+    }
+  }
+
+  successBtn.addEventListener('click', () => submitOutcome('success'));
+  failBtn.addEventListener('click', () => submitOutcome('failed'));
+})();
+</script>
+</body>
+</html>

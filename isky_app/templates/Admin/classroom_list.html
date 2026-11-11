@@ -1,0 +1,107 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Classrooms{% endblock %}
+{% block breadcrumb_label %}Classrooms{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Classrooms</h1>
+    <div class="college-line">
+      {% if selected_academic_year %}
+        {{ selected_academic_year.name }}
+        {% if selected_academic_year.is_current %}(Current){% else %}(Past year &middot; read only){% endif %}
+        &middot;
+      {% endif %}
+      {% if access_level == "department" %}Your department's classrooms
+      {% elif access_level == "class" %}Your class only
+      {% elif access_level == "teaching" %}Classrooms you teach
+      {% else %}Department-wise sections, grouped by year{% endif %}
+    </div>
+  </div>
+  {% if can_create_classroom %}
+  <a href="{% url 'create-classroom' %}" class="btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    Create Classroom
+  </a>
+  {% endif %}
+</div>
+
+{% if not selected_academic_year %}
+<section class="panel">
+  <div class="panel-body">
+    <p class="empty-note">No academic year has been set up yet. Ask the master admin or office admin to create one.</p>
+  </div>
+</section>
+{% else %}
+
+<section class="panel" style="margin-bottom:18px; max-width:420px;">
+  <div class="panel-body">
+    <form method="get" action="{% url 'college-classrooms' %}">
+      <div class="field" style="margin-bottom:0;">
+        <label for="cl-academic-year">Academic Year</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <select id="cl-academic-year" name="academic_year" onchange="this.form.submit()">
+            {% for ay in academic_years %}
+            <option value="{{ ay.id }}" {% if ay.id == selected_academic_year.id %}selected{% endif %}>
+              {{ ay.name }}{% if ay.is_current %} (Current){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+
+{% for group in department_groups %}
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>{{ group.department.name }}</h2>
+    <span class="field-hint" style="margin:0;">{{ group.classroom_count }} classroom{{ group.classroom_count|pluralize }}</span>
+  </div>
+
+  <div class="panel-body">
+    {% for yg in group.year_groups %}
+    <div class="form-section-title" {% if forloop.first %}style="margin-top:0;"{% endif %}>{{ yg.year_display }}</div>
+
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead>
+          <tr><th>Name</th><th>Section</th><th>Semester</th><th>Room</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for c in yg.classrooms %}
+          <tr>
+            <td>{{ group.department.short_name }}</td>
+            <td><span class="dir-id">{{ c.section|default:"—" }}</span></td>
+            <td>{{ c.get_semester_display }}</td>
+            <td>{{ c.room_number|default:"—" }}</td>
+            <td><a href="{% url 'classroom-detail' c.id %}" class="view-all">{% if selected_academic_year.is_current and access_level == "full" or selected_academic_year.is_current and access_level == "department" %}Manage{% else %}View{% endif %}</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% empty %}
+    <p class="empty-note">
+      {% if access_level == "full" or access_level == "department" %}
+        No classrooms for {{ selected_academic_year.name }} in this department yet.
+      {% else %}
+        No classrooms available to you for {{ selected_academic_year.name }}.
+      {% endif %}
+    </p>
+    {% endfor %}
+  </div>
+</section>
+{% empty %}
+<section class="panel">
+  <div class="panel-body">
+    <p class="empty-note">No departments found. Create a department first, then add classrooms.</p>
+  </div>
+</section>
+{% endfor %}
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,212 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Students{% endblock %}
+{% block breadcrumb_label %}Students{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Students</h1>
+    <div class="college-line">
+      {% if is_department_view %}
+        Showing your department only · grouped by academic year
+      {% else %}
+        Department-wise roster · grouped by academic year
+      {% endif %}
+    </div>
+  </div>
+  <a href="{% url 'create-student' %}" class="btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    Create Student
+  </a>
+</div>
+
+<!-- ---------- Filters ---------- -->
+<style>
+  .filter-bar {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 18px;
+  }
+  .filter-bar form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 16px;
+  }
+  .filter-bar .filter-field {
+    flex: 1 1 170px;
+    min-width: 150px;
+  }
+  .filter-bar label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-900);
+    margin-bottom: 8px;
+  }
+  .filter-bar .filter-control {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--cream) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7078' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+    background-size: 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 34px 11px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--ink-900);
+    outline: none;
+  }
+  .filter-bar .filter-control:focus {
+    border-color: var(--secondary-light);
+    box-shadow: 0 0 0 3px rgba(10, 107, 102, .12);
+  }
+  .filter-bar .filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .filter-bar .btn-apply {
+    background: var(--secondary-light);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .filter-bar .btn-apply:hover { background: var(--secondary); }
+  .filter-bar .btn-clear {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-500);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .filter-bar .btn-clear:hover { color: var(--ink-900); }
+</style>
+
+<div class="filter-bar">
+  <form method="get" action="{% url 'college-students' %}">
+
+    {# Department filter is only useful when the user can see more than one department #}
+    {% if not is_department_view %}
+    <div class="filter-field">
+      <label for="f-department">Department</label>
+      <select id="f-department" name="department" class="filter-control">
+        <option value="">All Departments</option>
+        {% for dept in departments %}
+        <option value="{{ dept.id }}" {% if selected_department == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    <div class="filter-field">
+      <label for="f-academic-year">Academic Year</label>
+      <select id="f-academic-year" name="academic_year" class="filter-control">
+        <option value="">All Years</option>
+        {% for ay in academic_years %}
+        <option value="{{ ay }}" {% if selected_academic_year == ay %}selected{% endif %}>{{ ay }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="f-year">Year of Study</label>
+      <select id="f-year" name="year" class="filter-control">
+        <option value="">All Years</option>
+        <option value="1" {% if selected_year == "1" %}selected{% endif %}>1st Year</option>
+        <option value="2" {% if selected_year == "2" %}selected{% endif %}>2nd Year</option>
+        <option value="3" {% if selected_year == "3" %}selected{% endif %}>3rd Year</option>
+        <option value="4" {% if selected_year == "4" %}selected{% endif %}>4th Year</option>
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="f-semester">Semester</label>
+      <select id="f-semester" name="semester" class="filter-control">
+        <option value="">All Semesters</option>
+        {% for s in "12345678" %}
+        <option value="{{ s }}" {% if selected_semester == s %}selected{% endif %}>{{ s }}{% if s == "1" %}st{% elif s == "2" %}nd{% elif s == "3" %}rd{% else %}th{% endif %} Semester</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-actions">
+      <a href="{% url 'college-students' %}" class="btn-clear">Clear</a>
+      <button type="submit" class="btn-apply">Apply Filters</button>
+    </div>
+  </form>
+</div>
+
+<!-- ---------- Results: Department -> Academic Year -> Students ---------- -->
+{% for group in department_groups %}
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>{{ group.department.name }}</h2>
+    <span class="field-hint" style="margin:0;">{{ group.student_count }} student{{ group.student_count|pluralize }}</span>
+  </div>
+
+  <div class="panel-body">
+    {% for yg in group.year_groups %}
+      <div class="form-section-title" {% if forloop.first %}style="margin-top:0;"{% endif %}>
+        {{ yg.academic_year }}
+      </div>
+
+      <div class="table-wrap">
+        <table class="simple-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Admission No.</th>
+              <th>Roll No.</th>
+              <th>Year / Sem</th>
+              <th>Section</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for stu in yg.students %}
+            <tr>
+              <td>
+                <div class="dir-item" style="border:none;padding:0;">
+                  <div class="dir-avatar">{{ stu.college_user.user.first_name|slice:":2"|upper }}</div>
+                  <div class="dir-info">
+                    <div class="dn">{{ stu.college_user.user.first_name }} {{ stu.college_user.user.last_name }}</div>
+                    <div class="dm">{{ stu.college_user.user.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="dir-id">{{ stu.admission_number }}</span></td>
+              <td>{{ stu.roll_number|default:"—" }}</td>
+              <td>{{ stu.get_year_display|default:"—" }} · {{ stu.get_semester_display|default:"—" }}</td>
+              <td>{{ stu.section|default:"—" }}</td>
+              <td><span class="pill {{ stu.college_user.status|default:'active' }}">{{ stu.college_user.get_status_display }}</span></td>
+              <td><a href="{% url 'student-detail' stu.id %}" class="view-all">Manage</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% empty %}
+      <p class="empty-note">No students match the current filters in this department.</p>
+    {% endfor %}
+  </div>
+</section>
+{% empty %}
+<section class="panel">
+  <div class="panel-body">
+    <p class="empty-note">No students found for the selected filters.</p>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,457 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Assign Fee Structure{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'create-fee-structure-page' %}" class="crumb-link">Fee Structures</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Assign Fee Structure</span>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Assign Fee Structure</h1>
+    <div class="college-line">Pick a fee structure, load its eligible students, and generate invoices</div>
+  </div>
+  <a href="{% url 'create-fee-structure-page' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Fee Structures
+  </a>
+</div>
+
+<div id="form-alert" class="form-alert" style="display:none;"></div>
+
+<input type="hidden" id="fs-college" value="{{ college }}">
+
+<!-- STEP 1: PICK STRUCTURE + SEMESTER + DUE DATE -->
+<section class="panel">
+  <div class="panel-head"><h2>1. Choose Fee Structure</h2></div>
+  <div class="panel-body">
+    <div class="form-grid-2">
+
+      <div class="field">
+        <label for="fs-select">Fee Structure</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          <select id="fs-select" required>
+            <option value="">Select a fee structure…</option>
+            {% for fs in fee_structures %}
+            <option
+              value="{{ fs.id }}"
+              data-billing-cycle="{{ fs.billing_cycle }}"
+              data-year="{{ fs.year }}"
+              data-department="{% if fs.department %}{{ fs.department.short_name }}{% else %}All Departments{% endif %}"
+              data-academic-year="{{ fs.academic_year }}"
+            >
+              {{ fs.academic_year }} · Year {{ fs.year }} · {% if fs.department %}{{ fs.department.short_name }}{% else %}All Departments{% endif %} ({{ fs.get_billing_cycle_display }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <p class="field-hint" id="fs-select-hint">&nbsp;</p>
+      </div>
+
+      <div class="field" id="fs-semester-field" style="display:none;">
+        <label for="fs-semester">Semester</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          <select id="fs-semester">
+            <option value="">Select semester…</option>
+          </select>
+        </div>
+        <p class="field-hint">Which semester's bill this is — required for a semester-wise structure.</p>
+      </div>
+
+      <div class="field">
+        <label for="fs-due-date">Due Date</label>
+        <div class="input-shell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <input type="date" id="fs-due-date" required>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="form-actions" style="margin-top: 8px;">
+      <button type="button" class="btn-primary" id="load-students-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        Load Students
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- STEP 2: STUDENT LIST -->
+<section class="panel" id="students-panel" style="margin-top: 20px; display:none;">
+  <div class="panel-head">
+    <h2>2. Select Students</h2>
+    <span id="students-count-badge" class="college-line"></span>
+  </div>
+  <div class="panel-body">
+    <div id="students-empty" class="dropdown-empty" style="padding: 12px 0; display:none;">
+      No active students found for this department and year.
+    </div>
+    <div id="students-table-wrap" style="overflow-x:auto; display:none;">
+      <table class="data-table" id="students-table" style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="width:36px;"><input type="checkbox" id="select-all-checkbox"></th>
+            <th>Admission No.</th>
+            <th>Roll No.</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Section</th>
+            <th>Hostellar</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="students-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="form-actions" style="margin-top: 24px;">
+  <button type="button" class="btn-primary" id="assign-btn" style="display:none;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    Assign Fee Structure &amp; Generate Invoices
+  </button>
+</div>
+{% endblock %}
+
+{% block tab_js %}
+<style>
+.form-alert {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.form-alert.error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+.form-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+.form-alert.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+
+.data-table th, .data-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 14px;
+}
+.data-table thead th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+}
+.data-table tbody tr.already-invoiced { background: #fafafa; color: #94a3b8; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge.badge-muted { background: #f1f5f9; color: #64748b; }
+.badge.badge-ok { background: #f0fdf4; color: #15803d; }
+</style>
+<script>
+(function () {
+  const fsSelect = document.getElementById('fs-select');
+  const fsSelectHint = document.getElementById('fs-select-hint');
+  const semesterField = document.getElementById('fs-semester-field');
+  const semesterSelect = document.getElementById('fs-semester');
+  const dueDateInput = document.getElementById('fs-due-date');
+  const loadStudentsBtn = document.getElementById('load-students-btn');
+
+  const studentsPanel = document.getElementById('students-panel');
+  const studentsCountBadge = document.getElementById('students-count-badge');
+  const studentsEmpty = document.getElementById('students-empty');
+  const studentsTableWrap = document.getElementById('students-table-wrap');
+  const studentsTbody = document.getElementById('students-tbody');
+  const selectAllCheckbox = document.getElementById('select-all-checkbox');
+  const assignBtn = document.getElementById('assign-btn');
+
+  const alertBox = document.getElementById('form-alert');
+
+  const SEMESTERS_BY_YEAR = {
+    1: [[1, '1st Semester'], [2, '2nd Semester']],
+    2: [[3, '3rd Semester'], [4, '4th Semester']],
+    3: [[5, '5th Semester'], [6, '6th Semester']],
+    4: [[7, '7th Semester'], [8, '8th Semester']],
+  };
+
+  function getCsrfToken() {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+  }
+
+  // Escape text before putting it into innerHTML
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // type: 'success' | 'error' | 'info'
+  function showAlert(message, type) {
+    alertBox.textContent = message;
+    alertBox.className = `form-alert ${type}`;
+    alertBox.style.display = 'block';
+    alertBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function hideAlert() {
+    alertBox.style.display = 'none';
+  }
+
+  // Turn a DRF error body into one readable line
+  function errorText(data, fallback) {
+    if (data && typeof data === 'object') {
+      if (data.detail) return data.detail;
+      const text = Object.values(data).flat().join(' ');
+      if (text) return text;
+    }
+    return fallback;
+  }
+
+  function selectedOption() {
+    return fsSelect.options[fsSelect.selectedIndex];
+  }
+
+  function isSemesterBilling() {
+    const opt = selectedOption();
+    return !!opt && opt.dataset.billingCycle === 'semester';
+  }
+
+  function syncSemesterField() {
+    const opt = selectedOption();
+    if (!opt || !opt.value) {
+      semesterField.style.display = 'none';
+      fsSelectHint.textContent = '\u00A0';
+      return;
+    }
+
+    fsSelectHint.textContent =
+      `${opt.dataset.department} · Year ${opt.dataset.year} · ${opt.dataset.academicYear}`;
+
+    if (opt.dataset.billingCycle === 'semester') {
+      semesterField.style.display = '';
+      semesterSelect.innerHTML = '<option value="">Select semester…</option>';
+      (SEMESTERS_BY_YEAR[opt.dataset.year] || []).forEach(([val, label]) => {
+        const o = document.createElement('option');
+        o.value = val;
+        o.textContent = label;
+        semesterSelect.appendChild(o);
+      });
+    } else {
+      semesterField.style.display = 'none';
+      semesterSelect.value = '';
+    }
+  }
+
+  fsSelect.addEventListener('change', function () {
+    syncSemesterField();
+    resetStudentsPanel();
+  });
+
+  function resetStudentsPanel() {
+    studentsPanel.style.display = 'none';
+    studentsTableWrap.style.display = 'none';
+    studentsEmpty.style.display = 'none';
+    studentsTbody.innerHTML = '';
+    assignBtn.style.display = 'none';
+    selectAllCheckbox.checked = false;
+  }
+
+  function currentSemesterValue() {
+    if (!isSemesterBilling()) return null;
+    return semesterSelect.value ? parseInt(semesterSelect.value, 10) : null;
+  }
+
+  function renderStudents(payload) {
+    const students = payload.students || [];
+    studentsCountBadge.textContent = `${students.length} student(s) found`;
+    studentsTbody.innerHTML = '';
+    selectAllCheckbox.checked = false;
+
+    if (students.length === 0) {
+      studentsEmpty.style.display = 'block';
+      studentsTableWrap.style.display = 'none';
+      assignBtn.style.display = 'none';
+      return;
+    }
+
+    studentsEmpty.style.display = 'none';
+    studentsTableWrap.style.display = 'block';
+
+    students.forEach((s) => {
+      const tr = document.createElement('tr');
+      if (s.already_invoiced) tr.classList.add('already-invoiced');
+
+      tr.innerHTML = `
+        <td>
+          <input type="checkbox" class="student-checkbox" value="${esc(s.id)}"
+            ${s.already_invoiced ? 'disabled' : ''}>
+        </td>
+        <td>${esc(s.admission_number)}</td>
+        <td>${esc(s.roll_number || '—')}</td>
+        <td>${esc(s.name)}</td>
+        <td>${esc(s.department_name || 'Unassigned')}</td>
+        <td>${esc(s.section || '—')}</td>
+        <td>${s.is_hostellar ? 'Yes' : 'No'}</td>
+        <td>
+          ${s.already_invoiced
+            ? '<span class="badge badge-muted">Already invoiced</span>'
+            : '<span class="badge badge-ok">Eligible</span>'}
+        </td>
+      `;
+      studentsTbody.appendChild(tr);
+    });
+
+    const anySelectable = studentsTbody.querySelectorAll('.student-checkbox:not(:disabled)').length > 0;
+    assignBtn.style.display = anySelectable ? '' : 'none';
+  }
+
+  selectAllCheckbox.addEventListener('change', function () {
+    studentsTbody.querySelectorAll('.student-checkbox:not(:disabled)').forEach((cb) => {
+      cb.checked = selectAllCheckbox.checked;
+    });
+  });
+
+  // ---------- Load students ----------
+  // opts.keepAlert: don't clear the alert box first (used when refreshing after a successful assign)
+  // opts.scroll:    scroll down to the student list when done (default true)
+  async function loadStudents(opts = {}) {
+    const keepAlert = !!opts.keepAlert;
+    const scroll = opts.scroll !== false;
+
+    if (!keepAlert) hideAlert();
+    const opt = selectedOption();
+
+    if (!opt || !opt.value) {
+      showAlert('Choose a fee structure first.', 'error');
+      return false;
+    }
+    if (!dueDateInput.value) {
+      showAlert('Set a due date before loading students.', 'error');
+      return false;
+    }
+    if (isSemesterBilling() && !semesterSelect.value) {
+      showAlert('Select a semester for this fee structure.', 'error');
+      return false;
+    }
+
+    const semester = currentSemesterValue();
+    const params = new URLSearchParams();
+    if (semester !== null) params.set('semester', semester);
+
+    loadStudentsBtn.disabled = true;
+    loadStudentsBtn.textContent = 'Loading…';
+
+    try {
+      const url = `/college/fee/structures/${opt.value}/eligible/students/?${params.toString()}`;
+      const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        showAlert(errorText(data, 'Could not load students.'), 'error');
+        return false;
+      }
+
+      studentsPanel.style.display = 'block';
+      renderStudents(data);
+      if (scroll) studentsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return true;
+    } catch (err) {
+      console.log(err);
+      showAlert('Network error — please try again.', 'error');
+      return false;
+    } finally {
+      loadStudentsBtn.disabled = false;
+      loadStudentsBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        Load Students`;
+    }
+  }
+
+  loadStudentsBtn.addEventListener('click', () => loadStudents());
+
+  // ---------- Assign + generate ----------
+  assignBtn.addEventListener('click', async function () {
+    hideAlert();
+
+    const studentIds = Array.from(
+      studentsTbody.querySelectorAll('.student-checkbox:checked')
+    ).map((cb) => cb.value);
+
+    if (studentIds.length === 0) {
+      showAlert('Select at least one student to invoice.', 'error');
+      return;
+    }
+
+    const opt = selectedOption();
+    const payload = {
+      fee_structure: opt.value,
+      student_ids: studentIds,
+      semester: currentSemesterValue(),
+      due_date: dueDateInput.value,
+    };
+
+    assignBtn.disabled = true;
+    assignBtn.textContent = 'Generating invoices…';
+
+    try {
+      const response = await fetch('/college/assign/fee/structure/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        showAlert(errorText(data, 'Something went wrong while generating invoices.'), 'error');
+        return;
+      }
+
+      // Build the result message
+      const created = data.created_count || 0;
+      const skipped = data.skipped_count || 0;
+      let message;
+      let type;
+      if (created > 0) {
+        message = `${created} invoice(s) generated successfully.`;
+        if (skipped > 0) message += ` ${skipped} student(s) skipped (already invoiced).`;
+        type = 'success';
+      } else {
+        message = skipped > 0
+          ? `No new invoices created — ${skipped} student(s) were already invoiced.`
+          : 'No invoices were created.';
+        type = 'info';
+      }
+
+      // Refresh the list FIRST (keeping the alert box untouched, no scroll to the table),
+      // then show the message. Showing it before the refresh meant the refresh hid it again.
+      await loadStudents({ keepAlert: true, scroll: false });
+      showAlert(message, type);
+    } catch (err) {
+      console.log(err);
+      showAlert('Network error — please try again.', 'error');
+    } finally {
+      assignBtn.disabled = false;
+      assignBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Assign Fee Structure &amp; Generate Invoices`;
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,365 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Create Subject{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'college-subjects' %}" class="crumb-link">Subjects</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Create Subject</span>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Create Subject</h1>
+    <div class="college-line">Add a subject to one or multiple departments</div>
+  </div>
+  <a href="{% url 'college-subjects' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Subjects
+  </a>
+</div>
+
+<form method="post" action="{% url 'create-subject' %}" autocomplete="off">
+  {% csrf_token %}
+  {# college is set server-side in the view, so no hidden college input is needed #}
+
+  <section class="panel">
+    <div class="panel-head"><h2>Subject Details</h2></div>
+    <div class="panel-body">
+      <div class="form-grid-2">
+
+        <div class="field">
+          <label for="sub-name">Subject Name*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+            <input type="text" id="sub-name" name="name" value="{{ form_data.name|default:'' }}" placeholder="e.g. Data Structures" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="sub-code">Subject Code*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
+            <input type="text" id="sub-code" name="code" value="{{ form_data.code|default:'' }}" placeholder="e.g. CS301" required style="text-transform:uppercase;">
+          </div>
+          <p class="field-hint">Must be unique within the college.</p>
+        </div>
+
+        <div class="field">
+          <label for="sub-type">Subject Type*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/></svg>
+            <select id="sub-type" name="subject_type" required>
+              <option value="theory" {% if form_data.subject_type == 'theory' or not form_data.subject_type %}selected{% endif %}>Theory</option>
+              <option value="practical" {% if form_data.subject_type == 'practical' %}selected{% endif %}>Practical / Lab</option>
+              <option value="elective" {% if form_data.subject_type == 'elective' %}selected{% endif %}>Elective</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="sub-credits">Credits*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            <input type="number" id="sub-credits" name="credits" min="1" max="10" value="{{ form_data.credits|default:'3' }}" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Status*</label>
+          <div class="segmented">
+            <input type="radio" id="sub-status-active" name="is_active" value="true"
+                   {% if form_data.is_active != 'false' %}checked{% endif %}>
+            <label for="sub-status-active">Active</label>
+            <input type="radio" id="sub-status-inactive" name="is_active" value="false"
+                   {% if form_data.is_active == 'false' %}checked{% endif %}>
+            <label for="sub-status-inactive">Inactive</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEPARTMENT ASSIGNMENTS PANEL -->
+  <section class="panel" id="dept-panel" style="margin-top: 20px;">
+    <div class="panel-head"><h2>Department Assignments</h2></div>
+    <div class="panel-body">
+      <div class="field">
+        <label>Select Departments</label>
+        <div class="multiselect-container" id="dept-multiselect">
+          <div class="input-shell multiselect-trigger" id="dept-trigger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <span id="dept-selected-text">Select departments</span>
+            <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+
+          <div class="multiselect-dropdown" id="dept-dropdown" style="display: none;">
+            {% for dept in departments %}
+            <label class="checkbox-option">
+              <input type="checkbox" data-id="{{ dept.id }}" data-name="{{ dept.name }} ({{ dept.short_name }})" class="dept-checkbox">
+              <span>{{ dept.name }} ({{ dept.short_name }})</span>
+            </label>
+            {% empty %}
+            <div class="dropdown-empty">No departments available</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTAINER FOR SELECTED DEPARTMENTS SESSIONS -->
+      <div id="assignment-rows" style="margin-top: 16px; display: flex; flex-direction: column; gap: 12px;"></div>
+    </div>
+  </section>
+
+  <div class="form-actions" style="margin-top: 24px;">
+    <a href="{% url 'college-subjects' %}" class="btn-ghost">Cancel</a>
+    <button type="submit" class="btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Create Subject
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block tab_js %}
+<style>
+/* Let the dropdown render outside the panel instead of being clipped */
+#dept-panel,
+#dept-panel .panel-body {
+  overflow: visible !important;
+}
+#dept-panel {
+  position: relative;
+  z-index: 20;               /* sit above later panels/rows */
+}
+
+.multiselect-container {
+  position: relative;
+  width: 100%;
+}
+
+.multiselect-trigger {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.multiselect-trigger .arrow-icon {
+  margin-left: auto;
+}
+
+/* absolute (not fixed): the browser moves it with the page, so no scroll jitter */
+.multiselect-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;                  /* same width as the trigger */
+  max-height: 240px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  padding: 6px;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.checkbox-option:hover {
+  background-color: #f1f5f9;
+}
+
+.checkbox-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.dropdown-empty {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.bulk-result-box { border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+.bulk-result-success { background: #EAFAF3; border: 1px solid #A9E6C8; color: #1C6B45; }
+.bulk-result-errors { background: #FFF5F5; border: 1px solid #FEB2B2; color: #C53030; }
+</style>
+
+{# Assignment rows from a failed submit, used to rebuild the department rows #}
+{{ initial_assignments|json_script:"initial-assignments" }}
+
+<script>
+  (function () {
+    const trigger = document.getElementById('dept-trigger');
+    const dropdown = document.getElementById('dept-dropdown');
+    const selectedText = document.getElementById('dept-selected-text');
+    const checkboxes = document.querySelectorAll('.dept-checkbox');
+    const rowsContainer = document.getElementById('assignment-rows');
+
+    const staffOptions = [
+      { id: '', name: 'Select Lecturer / Staff (Optional)' },
+      {% for staff in staff_members %}
+      {
+        id: '{{ staff.id|escapejs }}',
+        name: '{{ staff.college_user.user.get_full_name|default:staff.college_user.user.username|escapejs }} ({% if staff.department %}{{ staff.department.short_name|escapejs }}{% else %}General{% endif %})'
+      }{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ];
+
+    const SEMESTERS_BY_YEAR = {
+      1: [[1, '1st Semester'], [2, '2nd Semester']],
+      2: [[3, '3rd Semester'], [4, '4th Semester']],
+      3: [[5, '5th Semester'], [6, '6th Semester']],
+      4: [[7, '7th Semester'], [8, '8th Semester']],
+    };
+
+    /* ---------- Dropdown open/close (CSS handles positioning) ---------- */
+    function openDropdown()  { dropdown.style.display = 'block'; }
+    function closeDropdown() { dropdown.style.display = 'none'; }
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      dropdown.style.display === 'block' ? closeDropdown() : openDropdown();
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!dropdown.contains(e.target) && !trigger.contains(e.target)) closeDropdown();
+    });
+
+    /* ---------- Checkbox -> row sync ---------- */
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', function () {
+        const deptId = this.getAttribute('data-id');
+        const deptName = this.getAttribute('data-name');
+
+        if (this.checked) {
+          createDeptRow(deptId, deptName);
+        } else {
+          removeDeptRow(deptId);
+        }
+        updateSelectedText();
+      });
+    });
+
+    /* ---------- Row creation (preset = values restored after a failed submit) ---------- */
+    function createDeptRow(id, name, preset = {}) {
+      if (document.getElementById(`dept-row-${id}`)) return;
+
+      const row = document.createElement('div');
+      row.id = `dept-row-${id}`;
+      row.className = 'form-grid-2';
+      row.style.cssText = 'padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;';
+
+      // Static markup only. Dynamic text is added below via textContent (no HTML injection).
+      row.innerHTML = `
+        <div class="dept-row-title" style="grid-column: span 2; font-weight: 600; color: #334155;"></div>
+        <input type="hidden" name="assignment_departments" value="">
+
+        <div class="field">
+          <label>Year</label>
+          <div class="input-shell">
+            <select name="assignment_years" class="assign-year" required>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">4th Year</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Semester</label>
+          <div class="input-shell">
+            <select name="assignment_semesters" class="assign-semester" required></select>
+          </div>
+        </div>
+
+        <div class="field" style="grid-column: span 2;">
+          <label>Assigned Lecturer</label>
+          <div class="input-shell">
+            <select name="assignment_teachers" class="assign-teacher"></select>
+          </div>
+        </div>
+      `;
+
+      row.querySelector('.dept-row-title').textContent = name;
+      row.querySelector('input[name="assignment_departments"]').value = id;
+
+      const yearSelect = row.querySelector('.assign-year');
+      const semesterSelect = row.querySelector('.assign-semester');
+      const teacherSelect = row.querySelector('.assign-teacher');
+
+      staffOptions.forEach(staff => {
+        const opt = document.createElement('option');
+        opt.value = staff.id;
+        opt.textContent = staff.name;
+        teacherSelect.appendChild(opt);
+      });
+
+      function syncSemesters(selectedSem) {
+        const year = yearSelect.value;
+        semesterSelect.innerHTML = '';
+        (SEMESTERS_BY_YEAR[year] || []).forEach(([val, label]) => {
+          const opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = label;
+          if (selectedSem && String(val) === String(selectedSem)) opt.selected = true;
+          semesterSelect.appendChild(opt);
+        });
+      }
+
+      yearSelect.addEventListener('change', () => syncSemesters());
+
+      // Apply preset values (restored after a failed submit)
+      if (preset.year) yearSelect.value = preset.year;
+      syncSemesters(preset.semester);
+      if (preset.teacher) teacherSelect.value = preset.teacher;
+
+      rowsContainer.appendChild(row);
+    }
+
+    function removeDeptRow(id) {
+      const row = document.getElementById(`dept-row-${id}`);
+      if (row) row.remove();
+    }
+
+    function updateSelectedText() {
+      const checked = document.querySelectorAll('.dept-checkbox:checked');
+      if (checked.length === 0) {
+        selectedText.textContent = 'Select departments';
+      } else if (checked.length === 1) {
+        selectedText.textContent = checked[0].getAttribute('data-name');
+      } else {
+        selectedText.textContent = `${checked.length} Departments Selected`;
+      }
+    }
+
+    /* ---------- Restore rows after a failed submit ---------- */
+    const initialEl = document.getElementById('initial-assignments');
+    let initial = [];
+    try { initial = initialEl ? JSON.parse(initialEl.textContent) : []; } catch (e) { initial = []; }
+
+    initial.forEach(a => {
+      const cb = document.querySelector(`.dept-checkbox[data-id="${a.department}"]`);
+      if (!cb) return;   // department no longer available
+      cb.checked = true;
+      createDeptRow(a.department, cb.getAttribute('data-name'), a);
+    });
+    updateSelectedText();
+  })();
+</script>
+{% endblock %}

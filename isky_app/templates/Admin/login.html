@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISKY ERP · Administrative Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --purple-950:#241a33;
+    --purple-900:#362350;
+    --purple-700:#493267;
+    --purple-500:#6d4f96;
+    --lavender-300:#a993c9;
+    --gold-400:#c6a15b;
+    --cream-50:#f6f3ec;
+    --cream-100:#efe9dc;
+    --ink-900:#2a2233;
+    --ink-500:#6f6680;
+    --line:rgba(73,50,103,0.14);
+    --glass:rgba(255,255,255,0.52);
+    --glass-strong:rgba(255,255,255,0.72);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    color:var(--ink-900);
+    background:
+      radial-gradient(circle at 14% 8%, rgba(105,73,150,0.16), transparent 42%),
+      radial-gradient(circle at 92% 90%, rgba(198,161,91,0.14), transparent 40%),
+      var(--cream-50);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  /* faint campus blueprint grid, the page's quiet texture */
+  .blueprint{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:56px 56px;
+    -webkit-mask-image:radial-gradient(circle at 68% 50%, black, transparent 68%);
+    mask-image:radial-gradient(circle at 68% 50%, black, transparent 68%);
+    opacity:0.55;
+  }
+
+  .stage{
+    position:relative; z-index:1;
+    width:min(1180px, 92vw);
+    display:grid;
+    grid-template-columns:1.05fr 0.95fr;
+    gap:64px;
+    align-items:center;
+    padding:48px 0;
+  }
+
+  /* ---------- LEFT: brand column ---------- */
+  .brand-col{ padding-right:8px; }
+
+  .brand-mark{
+    display:inline-flex; align-items:center; gap:14px;
+    margin-bottom:64px;
+  }
+  .brand-badge{
+    width:46px; height:46px; border-radius:13px;
+    background:linear-gradient(155deg, var(--purple-700), var(--purple-950));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 18px -8px rgba(54,35,80,0.55);
+  }
+  .brand-badge svg{ width:22px; height:22px; }
+  .brand-text .name{
+    font-family:'Fraunces', serif; font-weight:700; font-size:1.25rem;
+    color:var(--purple-950); letter-spacing:0.01em; line-height:1;
+  }
+  .brand-text .sub{
+    font-family:'JetBrains Mono', monospace; font-size:0.62rem;
+    letter-spacing:0.22em; color:var(--ink-500); margin-top:4px;
+  }
+
+  .headline{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(2.6rem, 4.6vw, 4rem);
+    line-height:1.03;
+    color:var(--purple-950);
+    letter-spacing:-0.01em;
+    margin:0 0 22px;
+  }
+  .headline em{
+    font-style:italic; font-weight:500; color:var(--purple-500);
+  }
+
+  .lede{
+    font-size:1.03rem; line-height:1.65; color:var(--ink-500);
+    max-width:440px; margin:0 0 40px;
+  }
+
+  .capability-rail{
+    display:flex; flex-wrap:wrap; gap:10px; max-width:460px;
+  }
+  .chip{
+    font-family:'JetBrains Mono', monospace; font-size:0.68rem;
+    letter-spacing:0.04em; color:var(--purple-700);
+    background:rgba(73,50,103,0.07);
+    border:1px solid rgba(73,50,103,0.14);
+    padding:7px 12px; border-radius:8px;
+  }
+
+  .status-line{
+    display:flex; align-items:center; gap:9px;
+    margin-top:56px; font-size:0.78rem; color:var(--ink-500);
+    font-family:'JetBrains Mono', monospace;
+  }
+  .status-dot{
+    width:7px; height:7px; border-radius:50%; background:#4caf7d;
+    box-shadow:0 0 0 0 rgba(76,175,125,0.55);
+    animation:pulse-dot 2.4s infinite;
+  }
+  @keyframes pulse-dot{
+    0%{ box-shadow:0 0 0 0 rgba(76,175,125,0.45); }
+    70%{ box-shadow:0 0 0 7px rgba(76,175,125,0); }
+    100%{ box-shadow:0 0 0 0 rgba(76,175,125,0); }
+  }
+
+  /* ---------- RIGHT: login card ---------- */
+  .card-wrap{ position:relative; }
+
+  .card-wrap::before{
+    content:''; position:absolute; inset:-2px;
+    border-radius:26px;
+    background:conic-gradient(from var(--ang,0deg), transparent 0 78%, var(--gold-400) 84%, transparent 92%);
+    animation:rotate-ring 5.5s linear infinite;
+    opacity:0.65;
+  }
+  @keyframes rotate-ring{ to{ --ang:360deg; } }
+  @property --ang{ syntax:'<angle>'; inherits:false; initial-value:0deg; }
+
+  .card{
+    position:relative;
+    background:var(--glass);
+    backdrop-filter:blur(22px) saturate(140%);
+    -webkit-backdrop-filter:blur(22px) saturate(140%);
+    border:1px solid rgba(255,255,255,0.6);
+    border-radius:24px;
+    padding:44px 40px 34px;
+    box-shadow:0 30px 60px -24px rgba(54,35,80,0.35);
+  }
+
+  /* magnetic-stripe accent bar — the ID-card signature */
+  .card::before{
+    content:''; position:absolute; top:0; left:24px; right:24px; height:2px;
+    background:linear-gradient(90deg, transparent, var(--gold-400), transparent);
+  }
+
+  .id-chip{
+    width:64px; height:64px; margin:0 auto 22px;
+    border-radius:16px;
+    background:linear-gradient(155deg, var(--purple-500), var(--purple-950));
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    box-shadow:0 12px 24px -10px rgba(54,35,80,0.5);
+  }
+  .id-chip svg{ width:26px; height:26px; color:#fff; position:relative; z-index:2; }
+  .id-chip .scan{
+    position:absolute; left:6%; right:6%; height:2px; border-radius:2px;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+    animation:scan-move 2.6s ease-in-out infinite;
+  }
+  @keyframes scan-move{
+    0%,100%{ top:14%; opacity:0; }
+    10%{ opacity:1; }
+    50%{ top:82%; opacity:1; }
+    60%{ opacity:0; }
+  }
+
+  .card h1{
+    font-family:'Fraunces', serif; font-weight:600; font-size:1.68rem;
+    text-align:center; color:var(--purple-950); margin:0 0 6px;
+  }
+  .card .desc{
+    text-align:center; font-size:0.87rem; color:var(--ink-500); margin:0 0 30px;
+  }
+
+  .field{ margin-bottom:18px; }
+  .field label{
+    display:block; font-size:0.72rem; font-weight:600; letter-spacing:0.03em;
+    color:var(--purple-700); margin-bottom:7px;
+    font-family:'JetBrains Mono', monospace; text-transform:uppercase;
+  }
+  .input-shell{
+    display:flex; align-items:center; gap:10px;
+    background:var(--glass-strong);
+    border:1.5px solid rgba(73,50,103,0.16);
+    border-radius:12px; padding:12px 14px;
+    transition:border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+  .input-shell svg{ width:17px; height:17px; color:var(--ink-500); flex-shrink:0; }
+  .input-shell input{
+    border:none; outline:none; background:transparent; flex:1;
+    font-family:'Inter',sans-serif; font-size:0.94rem; color:var(--ink-900);
+  }
+  .input-shell input::placeholder{ color:#a79fb3; }
+  .input-shell:focus-within{
+    border-color:var(--purple-500);
+    background:#fff;
+    box-shadow:0 0 0 4px rgba(109,79,150,0.14);
+  }
+  .toggle-visibility{
+    background:none; border:none; cursor:pointer; padding:2px;
+    color:var(--ink-500); display:flex;
+  }
+  .toggle-visibility svg{ width:17px; height:17px; }
+
+  .row-between{
+    display:flex; align-items:center; justify-content:space-between;
+    margin:6px 0 26px; font-size:0.83rem;
+  }
+  .remember{ display:flex; align-items:center; gap:8px; color:var(--ink-500); cursor:pointer; user-select:none; }
+  .remember input{ accent-color:var(--purple-700); width:15px; height:15px; }
+  .forgot{ color:var(--purple-700); text-decoration:none; font-weight:600; }
+  .forgot:hover{ text-decoration:underline; }
+
+  .btn-login{
+    width:100%; border:none; cursor:pointer;
+    background:linear-gradient(135deg, var(--purple-700), var(--purple-950));
+    color:#fff; font-family:'Inter',sans-serif; font-weight:600; font-size:0.98rem;
+    padding:15px; border-radius:13px;
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    box-shadow:0 14px 26px -12px rgba(54,35,80,0.55);
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .btn-login:hover{ transform:translateY(-2px); box-shadow:0 18px 30px -12px rgba(54,35,80,0.6); }
+  .btn-login:active{ transform:translateY(0); }
+  .btn-login svg{ width:16px; height:16px; transition:transform .18s ease; }
+  .btn-login:hover svg{ transform:translateX(3px); }
+
+  .divider{
+    display:flex; align-items:center; gap:14px; margin:26px 0 20px;
+    color:var(--ink-500); font-size:0.72rem; letter-spacing:0.08em;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .divider::before, .divider::after{
+    content:''; flex:1; height:1px; background:rgba(73,50,103,0.16);
+  }
+
+  .help{ text-align:center; font-size:0.85rem; color:var(--ink-500); }
+  .help a{ color:var(--purple-700); font-weight:600; text-decoration:underline; }
+
+  footer{
+    position:relative; z-index:1; text-align:center; padding:0 0 28px;
+    font-size:0.76rem; color:var(--ink-500); font-family:'JetBrains Mono', monospace;
+  }
+
+  @media (max-width: 880px){
+    .stage{ grid-template-columns:1fr; gap:40px; padding-top:36px; }
+    .brand-col{ text-align:center; padding-right:0; }
+    .brand-mark{ justify-content:center; }
+    .lede{ margin-inline:auto; }
+    .capability-rail{ justify-content:center; margin-inline:auto; }
+    .status-line{ justify-content:center; }
+    .card-wrap{ max-width:440px; margin-inline:auto; width:100%; }
+  }
+
+  :focus-visible{ outline:2px solid var(--gold-400); outline-offset:2px; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="blueprint"></div>
+
+<div class="stage">
+
+  <!-- LEFT -->
+  <div class="brand-col">
+    <div class="brand-mark">
+      <div class="brand-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="name">ISKY</div>
+        <div class="sub">ERP PORTAL</div>
+      </div>
+    </div>
+
+    <h1 class="headline">Welcome<br><em>back</em>, administrator.</h1>
+    <p class="lede">Sign in to manage admissions, student records, finance, examinations, staff, and campus operations — all from one console.</p>
+
+    <div class="capability-rail">
+      <span class="chip">ADMISSIONS</span>
+      <span class="chip">FINANCE</span>
+      <span class="chip">EXAMINATIONS</span>
+      <span class="chip">STAFF</span>
+      <span class="chip">REPORTS</span>
+    </div>
+
+    <div class="status-line">
+      <span class="status-dot"></span>
+      All systems operational · Secure session · TLS 1.3
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="card-wrap">
+    <div class="card">
+      <div class="id-chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="m16 12 2 2 4-4"/></svg>
+        <span class="scan"></span>
+      </div>
+
+      <h1>Administrative Login</h1>
+      <p class="desc">Sign in to access the Administrative Dashboard</p>
+
+      <form id="loginForm">
+        <div class="field">
+          <label for="empId">Employee ID</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+            <input id="empId" type="text" placeholder="Enter your Employee ID" autocomplete="username" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="pwd">Password</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input id="pwd" type="password" placeholder="Enter secure password" autocomplete="current-password" />
+            <button type="button" class="toggle-visibility" id="toggleBtn" aria-label="Show password">
+              <!-- Default state: Password is hidden -> show slashed eye icon -->
+              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.6 19.6 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a19.7 19.7 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="row-between">
+          <label class="remember"><input type="checkbox" checked /> Remember me</label>
+          <a href="#" class="forgot">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn-login">
+          Login
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </form>
+
+      <div class="divider">OR</div>
+      <p class="help">Need help? <a href="#">Contact system administrator</a></p>
+    </div>
+  </div>
+
+</div>
+
+<footer>© 2026 ISKY · All rights reserved</footer>
+
+<script>
+  const toggleBtn = document.getElementById('toggleBtn');
+  const pwd = document.getElementById('pwd');
+  const eyeIcon = document.getElementById('eyeIcon');
+
+  // Eye SVG markup constants
+  const EYE_OPEN = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>';
+  const EYE_CLOSED = '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.6 19.6 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a19.7 19.7 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>';
+
+  toggleBtn.addEventListener('click', () => {
+    const isCurrentlyPassword = pwd.type === 'password';
+    
+    // Toggle input type
+    pwd.type = isCurrentlyPassword ? 'text' : 'password';
+    
+    // Inverted state mapping:
+    // When text is SHOWN (pwd.type === 'text') -> Show OPEN EYE
+    // When text is HIDDEN (pwd.type === 'password') -> Show CLOSED EYE
+    eyeIcon.innerHTML = isCurrentlyPassword ? EYE_OPEN : EYE_CLOSED;
+    
+    toggleBtn.setAttribute('aria-label', isCurrentlyPassword ? 'Hide password' : 'Show password');
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('.btn-login');
+    const original = btn.innerHTML;
+    btn.innerHTML = 'Verifying…';
+    btn.style.opacity = '0.75';
+    setTimeout(() => { btn.innerHTML = original; btn.style.opacity = '1'; }, 1400);
+  });
+</script>
+
+</body>
+</html>

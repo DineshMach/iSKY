@@ -1,0 +1,89 @@
+{% extends "Student/sidebar.html" %}
+
+{% block title %}ISKY ERP · Payment Summary{% endblock %}
+{% block breadcrumb_label %}Payment Summary{% endblock %}
+
+{% block main_content %}
+<style>
+  .summary-wrap{ max-width: 560px; margin: 20px auto; }
+  .summary-card{
+    background:#fff; border:1px solid var(--line); border-radius:16px; overflow:hidden;
+  }
+  .summary-head{
+    background: linear-gradient(150deg, var(--secondary) 0%, var(--primary-dark) 60%, var(--primary) 130%);
+    color:#fff; padding: 24px 28px;
+  }
+  .summary-head .kicker{
+    font-family:'JetBrains Mono',monospace; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em;
+    color: rgba(255,255,255,0.7); margin-bottom:6px;
+  }
+  .summary-head .amount{ font-family:'Fraunces',serif; font-size:2.2rem; font-weight:600; }
+
+  .summary-body{ padding: 24px 28px; }
+  .summary-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 12px 0; border-bottom: 1px solid var(--line); font-size:0.88rem;
+  }
+  .summary-row:last-child{ border-bottom:none; }
+  .summary-row .k{ color:var(--ink-500); }
+  .summary-row .v{ color:var(--ink-900); font-weight:600; text-align:right; }
+  .summary-row .v.mono{ font-family:'JetBrains Mono',monospace; font-size:0.82rem; font-weight:500; }
+
+  .summary-actions{ padding: 8px 28px 28px; display:flex; gap:12px; flex-wrap:wrap; }
+  .btn-continue{
+    flex:1; background: linear-gradient(120deg, var(--gold), #b6903f); color:#fff; border:none;
+    padding: 13px 20px; border-radius: 10px; font-weight:600; font-size:0.92rem; cursor:pointer;
+    text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn-cancel{
+    background:#fff; border:1px solid var(--line); color:var(--ink-500);
+    padding: 13px 20px; border-radius: 10px; font-weight:600; font-size:0.92rem; cursor:pointer;
+    text-decoration:none; display:inline-flex; align-items:center; justify-content:center;
+  }
+
+  .note{ font-size:0.78rem; color:var(--ink-500); padding: 0 28px 20px; }
+</style>
+
+<div class="summary-wrap">
+  <div class="summary-card">
+    <div class="summary-head">
+      <div class="kicker">Amount payable</div>
+      <div class="amount">₹{{ amount }}</div>
+    </div>
+    <div class="summary-body">
+      <div class="summary-row">
+        <span class="k">Invoice</span>
+        <span class="v mono">{{ invoice.invoice_number }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="k">Student</span>
+        <span class="v">{{ student_profile.college_user.user.get_full_name|default:student_profile.college_user.user.username }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="k">Admission No.</span>
+        <span class="v">{{ student_profile.admission_number }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="k">Academic Year</span>
+        <span class="v">{{ invoice.academic_year }}{% if invoice.semester %} · Sem {{ invoice.semester }}{% endif %}</span>
+      </div>
+      <div class="summary-row">
+        <span class="k">Payment Type</span>
+        <span class="v">Online</span>
+      </div>
+      <div class="summary-row">
+        <span class="k">Transaction Ref.</span>
+        <span class="v mono">{{ transaction_id }}</span>
+      </div>
+    </div>
+    <div class="summary-actions">
+      <a href="{% url 'student-fee-invoice-detail-page' invoice.id %}" class="btn-cancel">Cancel</a>
+      <a href="{% url 'payment-gateway-mock-page' transaction_id %}" class="btn-continue">
+        Continue to Payment
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+    <p class="note">You'll be taken to our payment page to complete this transaction. No amount is deducted yet.</p>
+  </div>
+</div>
+{% endblock %}

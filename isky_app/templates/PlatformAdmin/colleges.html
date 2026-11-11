@@ -1,0 +1,192 @@
+{% extends "PlatformAdmin/sidebar.html" %}
+
+{% block title %}Colleges{% endblock %}
+{% block breadcrumb_label %}Colleges{% endblock %}
+
+{% block main_content %}
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Colleges</h1>
+      <p>Add a college first, then create its administrators under College Users.</p>
+    </div>
+    <button type="button" class="btn btn-primary" id="toggleFormBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span id="toggleFormLabel">Add college</span>
+    </button>
+  </div>
+
+  <!-- ===== Create form (hidden until "Add college") ===== -->
+  <section class="panel stacked hidden" id="formPanel">
+    <div class="panel-head"><h3>New college</h3></div>
+    <div class="panel-body">
+      <div id="formAlert" class="alert"></div>
+      <form id="collegeForm" autocomplete="off">
+        <div class="form-grid">
+          <div class="field">
+            <label for="c-name">College name</label>
+            <input type="text" id="c-name" placeholder="St. Xavier's College" maxlength="200" required>
+          </div>
+          <div class="field">
+            <label for="c-code">College code</label>
+            <input type="text" id="c-code" placeholder="SXC" maxlength="30" required>
+            <div class="hint">Must be unique. Saved in capitals.</div>
+          </div>
+
+          <div class="field">
+            <label for="c-email">Official email</label>
+            <input type="email" id="c-email" placeholder="office@college.edu" required>
+          </div>
+          <div class="field">
+            <label for="c-mobile">Mobile number</label>
+            <input type="tel" id="c-mobile" placeholder="+91 98765 43210" maxlength="16" required>
+          </div>
+
+          <div class="field full">
+            <label for="c-address">Address</label>
+            <textarea id="c-address" placeholder="Street, area" required></textarea>
+          </div>
+
+          <div class="field">
+            <label for="c-city">City</label>
+            <input type="text" id="c-city" placeholder="Chennai" required>
+          </div>
+          <div class="field">
+            <label for="c-state">State</label>
+            <input type="text" id="c-state" placeholder="Tamil Nadu" required>
+          </div>
+
+          <div class="field">
+            <label for="c-country">Country</label>
+            <input type="text" id="c-country" value="India" required>
+          </div>
+          <div class="field">
+            <label for="c-pincode">Pincode</label>
+            <input type="text" id="c-pincode" placeholder="600001" maxlength="10">
+          </div>
+
+          <div class="field">
+            <label for="c-status">Status</label>
+            <select id="c-status">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="saveBtn">Create college</button>
+          <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== College list ===== -->
+  <section class="panel">
+    <div class="toolbar">
+      <input type="search" id="listSearch" placeholder="Search by name, code or city">
+      <select id="listStatus" aria-label="Filter by status">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+        <option value="suspended">Suspended</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th>College</th><th>Code</th><th>Location</th><th>Contact</th><th>Users</th><th>Status</th></tr>
+        </thead>
+        <tbody id="collegeRows"><tr><td colspan="6" class="state-row">Loading colleges…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    const { esc, list } = PLATFORM;
+    const $ = (id) => document.getElementById(id);
+    const formPanel = $('formPanel'), form = $('collegeForm'), alertBox = $('formAlert'), saveBtn = $('saveBtn');
+    const statusPill = { active: 'ok', inactive: 'off', suspended: 'warn' };
+    let colleges = [];
+
+    function showAlert(type, msg) { alertBox.className = 'alert ' + type; alertBox.textContent = msg; }
+    function clearAlert() { alertBox.className = 'alert'; alertBox.textContent = ''; }
+
+    function setFormOpen(open) {
+      formPanel.classList.toggle('hidden', !open);
+      $('toggleFormLabel').textContent = open ? 'Close form' : 'Add college';
+      if (open) $('c-name').focus(); else clearAlert();
+    }
+    $('toggleFormBtn').addEventListener('click', () => setFormOpen(formPanel.classList.contains('hidden')));
+    $('cancelBtn').addEventListener('click', () => setFormOpen(false));
+
+    function render() {
+      const q = $('listSearch').value.trim().toLowerCase();
+      const st = $('listStatus').value;
+      const rows = colleges.filter(c =>
+        (!st || c.status === st) &&
+        (!q || [c.name, c.code, c.city].some(v => (v || '').toLowerCase().includes(q)))
+      );
+      $('collegeRows').innerHTML = rows.length ? rows.map(c => `
+        <tr>
+          <td>${esc(c.name)}</td>
+          <td class="mono">${esc(c.code)}</td>
+          <td>${esc(c.city)}<div class="cell-sub">${esc(c.state)}</div></td>
+          <td>${esc(c.email)}<div class="cell-sub">${esc(c.mobile_number)}</div></td>
+          <td>${esc(c.users_count ?? 0)}</td>
+          <td><span class="pill ${statusPill[c.status] || 'off'}">${esc((c.status || '').charAt(0).toUpperCase() + (c.status || '').slice(1))}</span></td>
+        </tr>`).join('')
+        : `<tr><td colspan="6" class="state-row">${colleges.length ? 'No colleges match your filters.' : 'No colleges yet. Select Add college to create the first one.'}</td></tr>`;
+    }
+
+    async function load() {
+      try {
+        colleges = list(await PLATFORM.request(PLATFORM.api.colleges));
+        render();
+      } catch (e) {
+        $('collegeRows').innerHTML = '<tr><td colspan="6" class="state-row">Could not load colleges. Check the API route in platform_base.html.</td></tr>';
+      }
+    }
+
+    $('listSearch').addEventListener('input', render);
+    $('listStatus').addEventListener('change', render);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert();
+      saveBtn.disabled = true; saveBtn.textContent = 'Creating…';
+      const payload = {
+        name: $('c-name').value.trim(),
+        code: $('c-code').value.trim(),
+        email: $('c-email').value.trim(),
+        mobile_number: $('c-mobile').value.trim(),
+        address: $('c-address').value.trim(),
+        city: $('c-city').value.trim(),
+        state: $('c-state').value.trim(),
+        country: $('c-country').value.trim(),
+        pincode: $('c-pincode').value.trim(),
+        status: $('c-status').value,
+      };
+      try {
+        const created = await PLATFORM.request(PLATFORM.api.colleges, { method: 'POST', body: payload });
+        colleges.unshift(created);
+        form.reset(); $('c-country').value = 'India';
+        setFormOpen(false);
+        render();
+      } catch (err) {
+        showAlert('error', PLATFORM.errorText(err, 'Could not create the college.'));
+      } finally {
+        saveBtn.disabled = false; saveBtn.textContent = 'Create college';
+      }
+    });
+
+    load();
+  })();
+</script>
+{% endblock %}

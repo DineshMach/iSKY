@@ -1,0 +1,106 @@
+{% extends "PlatformAdmin/sidebar.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block breadcrumb_label %}Dashboard{% endblock %}
+
+{% block main_content %}
+<div class="page">
+
+  <section class="hero">
+    <svg class="net" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+      <g stroke="#2A3244" stroke-width="1">
+        <line x1="330" y1="30" x2="250" y2="80"/><line x1="250" y1="80" x2="340" y2="130"/>
+        <line x1="250" y1="80" x2="160" y2="110"/><line x1="160" y1="110" x2="230" y2="170"/>
+        <line x1="340" y1="130" x2="230" y2="170"/>
+      </g>
+      <g fill="#D6A94A">
+        <circle cx="330" cy="30" r="4" opacity=".8"/><circle cx="250" cy="80" r="5" opacity=".9"/>
+        <circle cx="340" cy="130" r="4" opacity=".7"/><circle cx="160" cy="110" r="4" opacity=".6"/>
+        <circle cx="230" cy="170" r="4" opacity=".7"/>
+      </g>
+    </svg>
+    <h2>One layer, every campus.</h2>
+    <p>Add colleges and give each one its first administrators. Everything a college does afterwards happens inside its own portal.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="{% url 'platform-college-users' %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Create college user
+      </a>
+    </div>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><div class="lbl">Colleges</div><div class="val gold" id="statColleges">–</div></div>
+    <div class="stat"><div class="lbl">Active colleges</div><div class="val" id="statActive">–</div></div>
+    <div class="stat"><div class="lbl">College users</div><div class="val" id="statUsers">–</div></div>
+    <div class="stat"><div class="lbl">Inactive users</div><div class="val" id="statInactive">–</div></div>
+  </section>
+
+  <div class="grid-2">
+    <section class="panel">
+      <div class="panel-head"><h3>Colleges</h3></div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Name</th><th>Code</th><th>Status</th></tr></thead>
+          <tbody id="collegeRows"><tr><td colspan="3" class="state-row">Loading colleges…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h3>Recent college users</h3>
+        <a href="{% url 'platform-college-users' %}">View all</a>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Name</th><th>Role</th></tr></thead>
+          <tbody id="userRows"><tr><td colspan="2" class="state-row">Loading users…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (async function () {
+    const { esc, list } = PLATFORM;
+    const roleLabel = { master_admin: 'Master Admin', office_admin: 'Office Admin', finance_admin: 'Finance Admin', staff_admin: 'Staff Admin' };
+
+    const [colleges, users] = await Promise.all([
+      PLATFORM.request(PLATFORM.api.colleges).then(list).catch(() => null),
+      PLATFORM.request(PLATFORM.api.collegeUsers).then(list).catch(() => null),
+    ]);
+
+    const cRows = document.getElementById('collegeRows');
+    if (colleges === null) {
+      cRows.innerHTML = '<tr><td colspan="3" class="state-row">Could not load colleges. Check the API route in platform_base.html.</td></tr>';
+    } else {
+      const active = colleges.filter(c => c.is_active !== false).length;
+      document.getElementById('statColleges').textContent = colleges.length;
+      document.getElementById('statActive').textContent = active;
+      cRows.innerHTML = colleges.length ? colleges.slice(0, 8).map(c => `
+        <tr>
+          <td>${esc(c.name)}</td>
+          <td class="mono">${esc(c.code || c.slug || '—')}</td>
+          <td><span class="pill ${c.is_active === false ? 'off' : 'ok'}">${c.is_active === false ? 'Inactive' : 'Active'}</span></td>
+        </tr>`).join('') : '<tr><td colspan="3" class="state-row">No colleges yet.</td></tr>';
+    }
+
+    const uRows = document.getElementById('userRows');
+    if (users === null) {
+      uRows.innerHTML = '<tr><td colspan="2" class="state-row">Could not load users.</td></tr>';
+    } else {
+      document.getElementById('statUsers').textContent = users.length;
+      document.getElementById('statInactive').textContent = users.filter(u => u.is_active === false).length;
+      uRows.innerHTML = users.length ? users.slice(0, 6).map(u => `
+        <tr>
+          <td>${esc(u.full_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.email)}</td>
+          <td><span class="pill role">${esc(roleLabel[u.role] || u.role || '—')}</span></td>
+        </tr>`).join('') : '<tr><td colspan="2" class="state-row">No college users yet.</td></tr>';
+    }
+  })();
+</script>
+{% endblock %}

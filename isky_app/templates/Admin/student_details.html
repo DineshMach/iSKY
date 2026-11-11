@@ -1,0 +1,630 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · {{ student.college_user.user.first_name }} {{ student.college_user.user.last_name }}{% endblock %}
+{% block breadcrumb_label %}Students{% endblock %}
+
+{% block main_content %}
+<style>
+  .profile-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .profile-head .dir-avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 20px;
+  }
+  .profile-head .p-name {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--ink-900);
+  }
+  .profile-head .p-meta {
+    font-size: 13px;
+    color: var(--ink-500);
+    margin-top: 2px;
+  }
+
+  .edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .edit-field {
+    display: flex;
+    flex-direction: column;
+  }
+  .edit-field.col-span-2 {
+    grid-column: span 2;
+  }
+  @media (max-width: 640px) {
+    .edit-field.col-span-2 {
+      grid-column: span 1;
+    }
+  }
+  .edit-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    color: var(--ink-500);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .edit-field input[type="text"],
+  .edit-field input[type="email"],
+  .edit-field input[type="tel"],
+  .edit-field input[type="date"],
+  .edit-field select {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    background: var(--cream);
+    color: var(--ink-900);
+  }
+  .edit-field textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    background: var(--cream);
+    color: var(--ink-900);
+    resize: vertical;
+    min-height: 80px;
+  }
+  .edit-field input:focus,
+  .edit-field select:focus,
+  .edit-field textarea:focus {
+    outline: none;
+    border-color: var(--secondary-light);
+    box-shadow: 0 0 0 3px rgba(10, 107, 102, .12);
+  }
+  /* Style disabled fields so they look explicitly read-only */
+  .edit-field input:disabled,
+  .edit-field select:disabled,
+  .edit-field textarea:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+    background-color: var(--card);
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 8px;
+  }
+
+  /* Send-password option under the email field */
+  .edit-field label.send-password-row {
+    display: none;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 8px 0 0;
+    padding: 9px 12px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-900);
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: pointer;
+  }
+  .edit-field label.send-password-row.is-visible { display: flex; }
+  .send-password-row input[type="checkbox"] { width: 16px; height: 16px; margin-top: 1px; flex-shrink: 0; }
+  .send-password-row small { display: block; color: var(--ink-500); font-size: 11.5px; font-weight: 400; margin-top: 2px; }
+
+  /* Calendar Styles */
+  .cal-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .cal-nav {
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ink-900);
+    text-decoration: none;
+  }
+  .cal-nav.disabled { opacity: .35; pointer-events: none; }
+  .cal-month-label { font-size: 15px; font-weight: 700; color: var(--ink-900); min-width: 140px; }
+
+  .cal-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-500);
+  }
+  .cal-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .dot-P { background: #0a6b66; }
+  .dot-A { background: #a8433d; }
+  .dot-L { background: #a9823f; }
+  .dot-OD { background: #493267; }
+
+  .cal-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .cal-summary .sc {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .cal-summary .sc .n { font-size: 20px; font-weight: 700; color: var(--ink-900); }
+  .cal-summary .sc .l { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-500); margin-top: 2px; }
+  .cal-summary .sc.present .n { color: #0a6b66; }
+  .cal-summary .sc.absent .n { color: #a8433d; }
+  .cal-summary .sc.late .n { color: #a9823f; }
+  .cal-summary .sc.od .n { color: #493267; }
+
+  table.cal-grid {
+    border-collapse: collapse;
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  table.cal-grid th {
+    background: var(--cream);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--ink-500);
+    padding: 10px 6px;
+    text-align: center;
+  }
+  table.cal-grid td {
+    border: 1px solid var(--line);
+    height: 68px;
+    width: 14.28%;
+    vertical-align: top;
+    padding: 6px 8px;
+    position: relative;
+  }
+  table.cal-grid td .day-num {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-900);
+  }
+  table.cal-grid td.out-month { background: var(--cream); }
+  table.cal-grid td.out-month .day-num { color: var(--ink-500); opacity: .5; }
+  table.cal-grid td.is-sunday .day-num { color: var(--ink-500); }
+  table.cal-grid td.is-today { box-shadow: inset 0 0 0 2px var(--secondary-light); }
+  table.cal-grid td.st-P { background: var(--green-soft); }
+  table.cal-grid td.st-A { background: #f6dedc; }
+  table.cal-grid td.st-L { background: #f5ead2; }
+  table.cal-grid td.st-OD { background: #e6e0f0; }
+  table.cal-grid td.st-P .day-num { color: #0a6b66; }
+  table.cal-grid td.st-A .day-num { color: #a8433d; }
+  table.cal-grid td.st-L .day-num { color: #a9823f; }
+  table.cal-grid td.st-OD .day-num { color: #493267; }
+  .day-tag {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .st-P .day-tag { color: #0a6b66; }
+  .st-A .day-tag { color: #a8433d; }
+  .st-L .day-tag { color: #a9823f; }
+  .st-OD .day-tag { color: #493267; }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>Student Profile</h1>
+    <div class="college-line">{{ student.department.name|default:"No department" }} &middot; {{ student.get_year_display|default:"—" }} &middot; {{ student.get_semester_display|default:"—" }}</div>
+  </div>
+  <a href="{% url 'college-students' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Students
+  </a>
+</div>
+
+<!-- Header -->
+<div class="profile-head">
+  <div class="dir-avatar">{{ student.college_user.user.first_name|slice:":2"|upper }}</div>
+  <div>
+    <div class="p-name">{{ student.college_user.user.first_name }} {{ student.college_user.user.last_name }}</div>
+    <div class="p-meta">{{ student.college_user.user.email }} &middot; {{ student.academic_year|default:"—" }}</div>
+  </div>
+  <span class="pill {{ student.college_user.status|default:'active' }}" style="margin-left:auto;">{{ student.college_user.get_status_display }}</span>
+</div>
+
+<!-- Complete Editable/Readonly Student Profile Form -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h2>Profile Details</h2>
+      <span id="profileSaveMsg" class="field-hint" style="margin:0;"></span>
+    </div>
+    <!-- Edit Toggle Button -->
+    <button type="button" id="toggleEditBtn" class="btn-ghost">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+        <path d="M12 20h9"/>
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </svg>
+      <span id="editBtnText">Edit Profile</span>
+    </button>
+  </div>
+  <div class="panel-body">
+    <form id="profileForm">
+
+      <!-- Section 1: Personal Details -->
+      <h3 style="font-size: 14px; font-weight: 700; color: var(--ink-900); margin-bottom: 12px;">Personal Information</h3>
+      <div class="edit-grid" style="margin-bottom: 20px;">
+        <div class="edit-field">
+          <label for="f-first-name">First Name</label>
+          <input type="text" id="f-first-name" name="first_name" value="{{ student.college_user.user.first_name }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-last-name">Last Name</label>
+          <input type="text" id="f-last-name" name="last_name" value="{{ student.college_user.user.last_name }}" disabled>
+        </div>
+
+        <!-- Email + send new password option -->
+        <div class="edit-field">
+          <label for="f-email">Email</label>
+          <input type="email" id="f-email" name="email" value="{{ student.college_user.user.email }}" disabled>
+
+          <label id="sendPasswordRow" class="send-password-row" for="f-send-password">
+            <input type="checkbox" id="f-send-password" name="send_password" disabled>
+            <span>
+              Send a new random password to this email
+              <small>Ticked automatically when you change the email. The old password stops working.</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="edit-field">
+          <label for="f-mobile">Mobile Number</label>
+          <input type="tel" id="f-mobile" name="mobile_number" value="{{ student.college_user.user.mobile_number|default:'' }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-dob">Date of Birth</label>
+          <input type="date" id="f-dob" name="date_of_birth" value="{{ student.date_of_birth|date:'Y-m-d' }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-blood-group">Blood Group</label>
+          <select id="f-blood-group" name="blood_group" disabled>
+            <option value="">— Select —</option>
+            <option value="A+" {% if student.blood_group == "A+" %}selected{% endif %}>A+</option>
+            <option value="A-" {% if student.blood_group == "A-" %}selected{% endif %}>A-</option>
+            <option value="B+" {% if student.blood_group == "B+" %}selected{% endif %}>B+</option>
+            <option value="B-" {% if student.blood_group == "B-" %}selected{% endif %}>B-</option>
+            <option value="O+" {% if student.blood_group == "O+" %}selected{% endif %}>O+</option>
+            <option value="O-" {% if student.blood_group == "O-" %}selected{% endif %}>O-</option>
+            <option value="AB+" {% if student.blood_group == "AB+" %}selected{% endif %}>AB+</option>
+            <option value="AB-" {% if student.blood_group == "AB-" %}selected{% endif %}>AB-</option>
+          </select>
+        </div>
+        <div class="edit-field">
+          <label for="f-emergency-contact">Emergency Contact</label>
+          <input type="tel" id="f-emergency-contact" name="emergency_contact_number" value="{{ student.emergency_contact_number|default:'' }}" disabled>
+        </div>
+        <div class="edit-field col-span-2">
+          <label for="f-address">Address</label>
+          <textarea id="f-address" name="address" rows="3" disabled>{{ student.address|default:'' }}</textarea>
+        </div>
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid var(--line); margin-bottom: 20px;">
+
+      <!-- Section 2: Academic Details -->
+      <h3 style="font-size: 14px; font-weight: 700; color: var(--ink-900); margin-bottom: 12px;">Academic Details</h3>
+      <div class="edit-grid">
+        <div class="edit-field">
+          <label for="f-admission">Admission Number</label>
+          <input type="text" id="f-admission" name="admission_number" value="{{ student.admission_number }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-roll">Roll Number</label>
+          <input type="text" id="f-roll" name="roll_number" value="{{ student.roll_number }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-department">Department</label>
+          <select id="f-department" name="department" disabled>
+            <option value="">Select Department</option>
+            {% for dept in departments %}
+            <option value="{{ dept.id }}" {% if student.department_id == dept.id %}selected{% endif %}>{{ dept.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="edit-field">
+          <label for="f-academic-year">Academic Year</label>
+          <input type="text" id="f-academic-year" name="academic_year" value="{{ student.academic_year|default:'' }}" placeholder="e.g. 2024-2025" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-year">Year of Study</label>
+          <select id="f-year" name="year" disabled>
+            <option value="1" {% if student.year == 1 or student.year == '1' %}selected{% endif %}>1st Year</option>
+            <option value="2" {% if student.year == 2 or student.year == '2' %}selected{% endif %}>2nd Year</option>
+            <option value="3" {% if student.year == 3 or student.year == '3' %}selected{% endif %}>3rd Year</option>
+            <option value="4" {% if student.year == 4 or student.year == '4' %}selected{% endif %}>4th Year</option>
+          </select>
+        </div>
+        <div class="edit-field">
+          <label for="f-semester">Semester</label>
+          <select id="f-semester" name="semester" data-current="{{ student.semester }}" disabled>
+            <!-- JavaScript dynamically populates options based on selected year -->
+          </select>
+        </div>
+        <div class="edit-field">
+          <label for="f-section">Section</label>
+          <input type="text" id="f-section" name="section" value="{{ student.section }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label>Active Status</label>
+          <div class="toggle-row">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink-900);cursor:pointer;">
+              <input type="checkbox" id="f-active" name="is_active" {% if student.is_active %}checked{% endif %} style="width:16px;height:16px;" disabled>
+              <span id="activeLabel">{% if student.is_active %}Active{% else %}Inactive{% endif %}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Footer (Hidden by default) -->
+      <div id="formActions" class="form-actions" style="margin-top: 20px; display: none; gap: 10px;">
+        <button type="button" id="saveProfileBtn" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Save Changes
+        </button>
+        <button type="button" id="cancelEditBtn" class="btn-ghost">Cancel</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- Attendance calendar -->
+<section class="panel">
+  <div class="panel-head">
+    <h2>Attendance</h2>
+  </div>
+  <div class="panel-body">
+    <div class="cal-toolbar">
+      <a href="?year={{ prev_year }}&month={{ prev_month }}" class="cal-nav">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </a>
+      <div class="cal-month-label">{{ month_label }}</div>
+      <a href="{% if not next_disabled %}?year={{ next_year }}&month={{ next_month }}{% else %}#{% endif %}" class="cal-nav {% if next_disabled %}disabled{% endif %}">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="cal-legend">
+        <span><span class="dot dot-P"></span>Present</span>
+        <span><span class="dot dot-A"></span>Absent</span>
+        <span><span class="dot dot-L"></span>Late</span>
+        <span><span class="dot dot-OD"></span>On Duty</span>
+      </div>
+    </div>
+
+    <div class="cal-summary">
+      <div class="sc present"><div class="n">{{ summary_counts.P }}</div><div class="l">Present Days</div></div>
+      <div class="sc absent"><div class="n">{{ summary_counts.A }}</div><div class="l">Absent Days</div></div>
+      <div class="sc late"><div class="n">{{ summary_counts.L }}</div><div class="l">Late Days</div></div>
+      <div class="sc od"><div class="n">{{ summary_counts.OD }}</div><div class="l">On Duty Days</div></div>
+    </div>
+
+    <table class="cal-grid">
+      <thead>
+        <tr>
+          <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for week in weeks %}
+        <tr>
+          {% for cell in week %}
+          <td class="{% if not cell.in_month %}out-month{% endif %} {% if cell.is_sunday %}is-sunday{% endif %} {% if cell.is_today %}is-today{% endif %} {% if cell.status %}st-{{ cell.status }}{% endif %}">
+            <div class="day-num">{{ cell.date|date:"j" }}</div>
+            {% if cell.status == "P" %}<span class="day-tag">Present</span>{% endif %}
+            {% if cell.status == "A" %}<span class="day-tag">Absent</span>{% endif %}
+            {% if cell.status == "L" %}<span class="day-tag">Late</span>{% endif %}
+            {% if cell.status == "OD" %}<span class="day-tag">On Duty</span>{% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    function getCookie(name) {
+      const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? match.pop() : '';
+    }
+
+    const profileForm = document.getElementById('profileForm');
+    const formFields = profileForm.querySelectorAll('input, select, textarea');
+    const toggleEditBtn = document.getElementById('toggleEditBtn');
+    const formActions = document.getElementById('formActions');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const activeBox = document.getElementById('f-active');
+    const activeLabel = document.getElementById('activeLabel');
+    const yearSelect = document.getElementById('f-year');
+    const semesterSelect = document.getElementById('f-semester');
+    const saveBtn = document.getElementById('saveProfileBtn');
+    const msg = document.getElementById('profileSaveMsg');
+
+    // Send-password option
+    const emailInput = document.getElementById('f-email');
+    const sendPasswordRow = document.getElementById('sendPasswordRow');
+    const sendPasswordCb = document.getElementById('f-send-password');
+    let originalEmail = emailInput ? emailInput.value : '';
+
+    // Toggle Active Label handler
+    if (activeBox) {
+      activeBox.addEventListener('change', () => {
+        activeLabel.textContent = activeBox.checked ? 'Active' : 'Inactive';
+      });
+    }
+
+    // Auto-tick "send password" when the email differs from the original;
+    // untick again if the original email is typed back.
+    if (emailInput && sendPasswordCb) {
+      emailInput.addEventListener('input', () => {
+        const changed = emailInput.value.trim().toLowerCase() !== originalEmail.trim().toLowerCase();
+        sendPasswordCb.checked = changed;
+      });
+    }
+
+    // Dynamic Semester Selection based on Year
+    const SEMESTERS_BY_YEAR = {
+      1: [[1, '1st Semester'], [2, '2nd Semester']],
+      2: [[3, '3rd Semester'], [4, '4th Semester']],
+      3: [[5, '5th Semester'], [6, '6th Semester']],
+      4: [[7, '7th Semester'], [8, '8th Semester']],
+    };
+
+    function syncSemesters() {
+      const year = yearSelect.value;
+      const currentSem = semesterSelect.dataset.current;
+      semesterSelect.innerHTML = '';
+
+      (SEMESTERS_BY_YEAR[year] || []).forEach(([value, label]) => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        if (String(value) === String(currentSem)) {
+          opt.selected = true;
+        }
+        semesterSelect.appendChild(opt);
+      });
+    }
+
+    if (yearSelect && semesterSelect) {
+      yearSelect.addEventListener('change', syncSemesters);
+      syncSemesters();
+    }
+
+    // Helper to toggle input fields between enabled and disabled
+    function setFormMode(editable) {
+      formFields.forEach(field => {
+        field.disabled = !editable;
+      });
+
+      if (sendPasswordRow) {
+        sendPasswordRow.classList.toggle('is-visible', editable);
+      }
+
+      if (editable) {
+        formActions.style.display = 'flex';
+        toggleEditBtn.style.display = 'none';
+      } else {
+        formActions.style.display = 'none';
+        toggleEditBtn.style.display = 'inline-flex';
+      }
+    }
+
+    // Click "Edit Profile" button
+    toggleEditBtn.addEventListener('click', () => {
+      originalEmail = emailInput.value;
+      sendPasswordCb.checked = false;
+      setFormMode(true);
+    });
+
+    // Click "Cancel" button
+    cancelEditBtn.addEventListener('click', () => {
+      profileForm.reset();   // also resets the email and unticks send_password
+      syncSemesters();
+      activeLabel.textContent = activeBox.checked ? 'Active' : 'Inactive';
+      msg.textContent = '';
+      setFormMode(false);
+    });
+
+    // Save Profile via AJAX
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const payload = {
+          first_name: document.getElementById('f-first-name').value,
+          last_name: document.getElementById('f-last-name').value,
+          email: emailInput.value.trim(),
+          mobile_number: document.getElementById('f-mobile').value || null,
+          date_of_birth: document.getElementById('f-dob').value || null,
+          blood_group: document.getElementById('f-blood-group').value || null,
+          emergency_contact_number: document.getElementById('f-emergency-contact').value || null,
+          address: document.getElementById('f-address').value || null,
+          admission_number: document.getElementById('f-admission').value,
+          roll_number: document.getElementById('f-roll').value,
+          department: document.getElementById('f-department').value || null,
+          academic_year: document.getElementById('f-academic-year').value,
+          year: document.getElementById('f-year').value,
+          semester: document.getElementById('f-semester').value,
+          section: document.getElementById('f-section').value,
+          is_active: document.getElementById('f-active').checked,
+          send_password: sendPasswordCb.checked,
+        };
+
+        saveBtn.disabled = true;
+        msg.textContent = payload.send_password ? 'Saving and sending email…' : 'Saving…';
+
+        try {
+          const res = await fetch("{% url 'update-student-profile' student.id %}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            msg.textContent = data.password_sent
+              ? 'Saved. New password sent to ' + payload.email + '.'
+              : 'Saved successfully.';
+            semesterSelect.dataset.current = payload.semester;
+            originalEmail = payload.email;
+
+            // Re-disable form upon success
+            setFormMode(false);
+            sendPasswordCb.checked = false;
+          } else {
+            const firstError = Object.values(data)[0];
+            msg.textContent = data.detail || (Array.isArray(firstError) ? firstError[0] : 'Could not save — check field formats.');
+            console.error(data);
+          }
+        } catch (e) {
+          msg.textContent = 'Network error while saving.';
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

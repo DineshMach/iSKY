@@ -1,0 +1,586 @@
+{% extends "Student/sidebar.html" %}
+{% load static %}
+
+{% block title %}My Attendance — ISKY ERP{% endblock %}
+
+{% block breadcrumb_label %}Attendance{% endblock %}
+
+{% block tab_css %}
+<style>
+  /* ============ Attendance summary cards ============ */
+  .att-stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .att-stat-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .att-stat-card .icon {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .att-stat-card .icon svg { width: 17px; height: 17px; }
+
+  .att-stat-card.total .icon   { background: var(--gold-soft);  color: var(--amber); }
+  .att-stat-card.present .icon { background: var(--green-soft); color: var(--secondary-light); }
+  .att-stat-card.absent .icon  { background: var(--red-soft);   color: var(--red); }
+  .att-stat-card.od .icon      { background: var(--amber-soft); color: var(--amber); }
+  .att-stat-card.pct .icon     { background: var(--primary-dark); color: #fff; }
+
+  .att-stat-card .val {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--ink-900);
+    line-height: 1;
+  }
+
+  .att-stat-card .lbl {
+    font-size: 11.5px;
+    color: var(--ink-500);
+    font-weight: 500;
+  }
+
+  .att-stat-card.pct .val { display: flex; align-items: baseline; gap: 4px; }
+  .att-stat-card.pct .val small { font-size: 13px; font-weight: 500; color: var(--ink-500); }
+
+  .att-warn {
+    margin-top: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--red);
+    background: var(--red-soft);
+    padding: 3px 8px;
+    border-radius: 99px;
+    width: fit-content;
+  }
+
+  .att-ok {
+    margin-top: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--secondary-light);
+    background: var(--green-soft);
+    padding: 3px 8px;
+    border-radius: 99px;
+    width: fit-content;
+  }
+
+  .att-skel {
+    color: var(--ink-500);
+    font-weight: 500;
+  }
+
+  /* ============ Two-column layout: subjects + calendar ============ */
+  .att-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  /* ---- Subject-wise table ---- */
+  .subj-name-cell { display: flex; flex-direction: column; gap: 1px; }
+  .subj-name-cell .sn { font-size: 12.5px; font-weight: 600; color: var(--ink-900); }
+  .subj-name-cell .sc { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-500); }
+
+  .subj-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+  }
+
+  .subj-bar-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 99px;
+    background: var(--cream);
+    overflow: hidden;
+  }
+
+  .subj-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--secondary-light);
+    transition: width .3s ease;
+  }
+
+  .subj-bar-fill.warn { background: var(--amber); }
+  .subj-bar-fill.danger { background: var(--red); }
+
+  .subj-bar-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-900);
+    width: 38px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ---- Calendar ---- */
+  .cal-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cal-nav button {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-900);
+    background: var(--card);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .cal-nav button:hover:not(:disabled) { border-color: var(--gold); color: var(--amber); }
+  .cal-nav button:disabled { opacity: .4; cursor: default; }
+  .cal-nav button svg { width: 14px; height: 14px; }
+
+  .cal-nav .cal-month-label {
+    font-family: 'Fraunces', serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink-900);
+    min-width: 108px;
+    text-align: center;
+  }
+
+  .cal-weekdays,
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+
+  .cal-weekdays { margin-bottom: 8px; }
+
+  .cal-weekdays span {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ink-500);
+    text-align: center;
+  }
+
+  .cal-day {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-900);
+    background: var(--cream);
+    border: 1px solid transparent;
+    position: relative;
+  }
+
+  .cal-day .dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    margin-top: 2px;
+  }
+
+  .cal-day.out-month { opacity: .35; }
+  .cal-day.future { color: var(--ink-500); background: transparent; border: 1px dashed var(--line); }
+  .cal-day.holiday { color: var(--ink-500); }
+
+  .cal-day.present { background: var(--green-soft); color: var(--secondary-light); }
+  .cal-day.present .dot { background: var(--secondary-light); }
+
+  .cal-day.absent { background: var(--red-soft); color: var(--red); }
+  .cal-day.absent .dot { background: var(--red); }
+
+  .cal-day.late { background: var(--amber-soft); color: var(--amber); }
+  .cal-day.late .dot { background: var(--amber); }
+
+  .cal-day.on_duty { background: var(--gold-soft); color: var(--amber); }
+  .cal-day.on_duty .dot { background: var(--gold); }
+
+  .cal-day.is-today { border: 1.5px solid var(--primary-dark); }
+
+  .cal-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .cal-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--ink-500);
+  }
+
+  .cal-legend-item .sw {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .cal-legend-item .sw.present { background: var(--secondary-light); }
+  .cal-legend-item .sw.absent { background: var(--red); }
+  .cal-legend-item .sw.late { background: var(--amber); }
+  .cal-legend-item .sw.on_duty { background: var(--gold); }
+  .cal-legend-item .sw.holiday { background: var(--line); }
+
+  .att-error {
+    font-size: 12.5px;
+    color: var(--red);
+    background: var(--red-soft);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .att-error.show { display: block; }
+
+  @media (max-width: 980px) {
+    .att-stats { grid-template-columns: repeat(2, 1fr); }
+    .att-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 480px) {
+    .att-stats { grid-template-columns: 1fr 1fr; }
+    .cal-day { font-size: 10.5px; }
+  }
+</style>
+{% endblock %}
+
+{% block main_content %}
+
+<div class="dash-topbar">
+  <div>
+    <h1>My Attendance</h1>
+    {{student.department.name}}
+    <div class="college-line">
+      <strong>{{ student.college_user.user.first_name|default:"Student" }}</strong> · {{ student.department.short_name|default:"—" }} · {{ student.academic_year|default:"—" }}
+      {% if student.section %} · Section {{ student.section }}{% endif %}
+    </div>
+  </div>
+  <div class="dash-date">{% now "D, d M Y" %}</div>
+</div>
+
+<div class="att-error" id="attError"></div>
+
+<!-- ============ SUMMARY CARDS ============ -->
+<div class="att-stats" id="attStats">
+
+  <div class="att-stat-card total">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+    </div>
+    <div class="val att-skel" data-field="total_sessions">—</div>
+    <div class="lbl">Total Classes</div>
+  </div>
+
+  <div class="att-stat-card present">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11L4 12"/></svg>
+    </div>
+    <div class="val att-skel" data-field="present_count">—</div>
+    <div class="lbl">Present</div>
+  </div>
+
+  <div class="att-stat-card absent">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </div>
+    <div class="val att-skel" data-field="absent_count">—</div>
+    <div class="lbl">Absent</div>
+  </div>
+
+  <div class="att-stat-card od">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="val att-skel" data-field="on_duty_count">—</div>
+    <div class="lbl">On Duty</div>
+  </div>
+
+  <div class="att-stat-card pct">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12.5 11 15l4.5-5"/></svg>
+    </div>
+    <div class="val"><span class="att-skel" data-field="percentage">—</span><small>%</small></div>
+    <div class="lbl">Overall Attendance</div>
+    <span class="att-warn" id="attPctWarn" style="display:none;">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+      Below 75% requirement
+    </span>
+    <span class="att-ok" id="attPctOk" style="display:none;">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m20 6-11 11L4 12"/></svg>
+      Meets requirement
+    </span>
+  </div>
+
+</div>
+
+<div class="att-grid">
+
+  <!-- ============ SUBJECT-WISE ATTENDANCE ============ -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Subject-wise Attendance</h2>
+    </div>
+    <div class="panel-body">
+      <div class="table-wrap">
+        <table class="simple-table">
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Held</th>
+              <th>Present</th>
+              <th>Absent</th>
+              <th>Attendance</th>
+            </tr>
+          </thead>
+          <tbody id="subjTableBody">
+            <tr>
+              <td colspan="5"><div class="empty-note">Loading subject attendance…</div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CALENDAR VIEW ============ -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Calendar</h2>
+      <div class="cal-nav">
+        <button type="button" id="calPrevBtn" aria-label="Previous month">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="cal-month-label" id="calMonthLabel">—</span>
+        <button type="button" id="calNextBtn" aria-label="Next month">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="panel-body">
+
+      <div class="cal-weekdays">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+
+      <div class="cal-grid" id="calGrid"></div>
+
+      <div class="cal-legend">
+        <div class="cal-legend-item"><span class="sw present"></span> Present</div>
+        <div class="cal-legend-item"><span class="sw absent"></span> Absent</div>
+        <div class="cal-legend-item"><span class="sw late"></span> Late</div>
+        <div class="cal-legend-item"><span class="sw on_duty"></span> On Duty</div>
+        <div class="cal-legend-item"><span class="sw holiday"></span> No Class</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+(function () {
+  const API_BASE = "/college/student/attendance/";
+  let currentMonth = null; // "YYYY-MM", set once the calendar first loads
+
+  const errorBox = document.getElementById("attError");
+
+  function showError(message) {
+    errorBox.textContent = message;
+    errorBox.classList.add("show");
+  }
+
+  async function apiGet(path) {
+    const res = await fetch(API_BASE + path, {
+      method: "GET",
+      credentials: "include",
+      headers: { "Accept": "application/json" },
+    });
+    if (!res.ok) {
+      let detail = "Something went wrong loading attendance data.";
+      try {
+        const body = await res.json();
+        detail = body.detail || detail;
+      } catch (e) { /* ignore parse errors */ }
+      throw new Error(detail);
+    }
+    return res.json();
+  }
+
+  /* ---------- Summary cards ---------- */
+  function renderSummary(data) {
+    document.querySelectorAll("[data-field]").forEach((el) => {
+      const field = el.getAttribute("data-field");
+      if (field in data) {
+        el.textContent = data[field];
+        el.classList.remove("att-skel");
+      }
+    });
+
+    const warn = document.getElementById("attPctWarn");
+    const ok = document.getElementById("attPctOk");
+    if (data.percentage < 75) {
+      warn.style.display = "inline-flex";
+      ok.style.display = "none";
+    } else {
+      ok.style.display = "inline-flex";
+      warn.style.display = "none";
+    }
+  }
+
+  /* ---------- Subject table ---------- */
+  function renderSubjects(rows) {
+    const body = document.getElementById("subjTableBody");
+    body.innerHTML = "";
+
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="5"><div class="empty-note">No subject attendance records found yet.</div></td></tr>';
+      return;
+    }
+
+    rows.forEach((subj) => {
+      const absent = subj.total - subj.present; // API doesn't return this directly
+      const barClass = subj.percentage < 65 ? "danger" : (subj.percentage < 75 ? "warn" : "");
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>
+          <div class="subj-name-cell">
+            <span class="sn"></span>
+            <span class="sc"></span>
+          </div>
+        </td>
+        <td>${subj.total}</td>
+        <td>${subj.present}</td>
+        <td>${absent}</td>
+        <td>
+          <div class="subj-bar-wrap">
+            <div class="subj-bar-track">
+              <div class="subj-bar-fill ${barClass}" style="width: ${subj.percentage}%;"></div>
+            </div>
+            <span class="subj-bar-pct">${subj.percentage}%</span>
+          </div>
+        </td>
+      `;
+      tr.querySelector(".sn").textContent = subj.subject_name;
+      tr.querySelector(".sc").textContent = subj.subject_code;
+      body.appendChild(tr);
+    });
+  }
+
+  /* ---------- Calendar ---------- */
+  function renderCalendar(data) {
+    currentMonth = data.month;
+
+    document.getElementById("calMonthLabel").textContent = data.month_label;
+
+    const grid = document.getElementById("calGrid");
+    grid.innerHTML = "";
+
+    data.weeks.flat().forEach((day) => {
+      const cell = document.createElement("div");
+      const classes = ["cal-day", day.status];
+      if (!day.in_month) classes.push("out-month");
+      if (day.is_today) classes.push("is-today");
+      cell.className = classes.join(" ");
+      cell.title = day.status_label ? `${day.date} — ${day.status_label}` : day.date;
+
+      const num = document.createElement("span");
+      num.textContent = day.day_number;
+      cell.appendChild(num);
+
+      if (day.status !== "holiday" && day.status !== "future") {
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        cell.appendChild(dot);
+      }
+      grid.appendChild(cell);
+    });
+  }
+
+  function shiftMonth(monthStr, delta) {
+    const [y, m] = monthStr.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  async function loadCalendar(monthStr) {
+    try {
+      const query = monthStr ? `calendar/?month=${monthStr}` : "calendar/";
+      const data = await apiGet(query);
+      renderCalendar(data);
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  document.getElementById("calPrevBtn").addEventListener("click", () => {
+    if (!currentMonth) return;
+    loadCalendar(shiftMonth(currentMonth, -1));
+  });
+
+  document.getElementById("calNextBtn").addEventListener("click", () => {
+    if (!currentMonth) return;
+    loadCalendar(shiftMonth(currentMonth, 1));
+  });
+
+  /* ---------- Initial load ---------- */
+  (async function init() {
+    try {
+      const [summary, subjects] = await Promise.all([
+        apiGet("summary/"),
+        apiGet("subjects/"),
+      ]);
+      renderSummary(summary);
+      renderSubjects(subjects);
+    } catch (err) {
+      showError(err.message);
+    }
+    loadCalendar(); // current month by default
+  })();
+})();
+</script>
+{% endblock %}

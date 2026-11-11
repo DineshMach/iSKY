@@ -1,0 +1,579 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Create Classroom{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'college-classrooms' %}" class="crumb-link">Classrooms</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Create Classroom</span>
+{% endblock %}
+
+{% block main_content %}
+<style>
+  .en-table { width:100%; border-collapse:collapse; }
+  .en-table th { text-align:left; font-size:11.5px; font-weight:600; color:var(--ink-500); padding:8px 10px; border-bottom:1px solid var(--line); }
+  .en-table td { font-size:13px; padding:11px 10px; border-bottom:1px solid var(--line); color:var(--ink-900); }
+  .en-table tr:last-child td { border-bottom:none; }
+  .en-table tr:hover td { background:var(--cream); }
+  .en-badge { font-size:11px; font-weight:600; padding:3px 10px; border-radius:99px; background:var(--gold-soft); color:var(--primary-dark); white-space:nowrap; }
+  .en-badge.muted { background:var(--cream); color:var(--ink-500); }
+  .en-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+  .cr-error { color:#b91c1c; }
+
+  /* Error display */
+  .form-banner { border-radius:8px; padding:12px 14px; font-size:13px; margin-bottom:14px; display:none; }
+  .form-banner.error { background:#FFF5F5; border:1px solid #FEB2B2; color:#C53030; }
+  .form-banner ul { margin:6px 0 0; padding-left:18px; }
+  .field-error { color:#C53030; font-size:12px; margin:4px 0 0; }
+  .field.has-error .input-shell { border-color:#FEB2B2 !important; }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>Create Classroom</h1>
+    <div class="college-line">
+      {% if can_manage_academic_years %}
+        Add a section/classroom for an academic year, department, year and semester
+      {% else %}
+        Add a section/classroom for your department
+      {% endif %}
+    </div>
+  </div>
+  <a href="{% url 'college-classrooms' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Classrooms
+  </a>
+</div>
+
+<form method="post" action="{% url 'create-classroom' %}" id="createClassroomForm"
+      data-has-years="{% if academic_years %}true{% else %}false{% endif %}"
+      data-can-manage-years="{% if can_manage_academic_years %}true{% else %}false{% endif %}"
+      autocomplete="off">
+  {% csrf_token %}
+
+  {# Error banner: filled by JS when the API returns errors. Typed values stay untouched. #}
+  <div id="formBanner" class="form-banner error" role="alert" tabindex="-1"></div>
+
+  {# ---------------- Academic year ---------------- #}
+  <section class="panel" style="margin-bottom:18px;">
+    <div class="panel-head"><h2>Academic Year</h2></div>
+    <div class="panel-body">
+      <div class="form-grid-2">
+
+        {% if academic_years %}
+        <div class="field">
+          <label for="cr-academic-year">Academic Year</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <select id="cr-academic-year">
+              {% for ay in academic_years %}
+              <option value="{{ ay.id }}" {% if current_academic_year and ay.id == current_academic_year.id %}selected{% endif %}>
+                {{ ay.name }}{% if ay.is_current %} (Current){% endif %}
+              </option>
+              {% endfor %}
+              {# Only master / office admin may create academic years #}
+              {% if can_manage_academic_years %}
+              <option value="__new__">+ Add new academic year…</option>
+              {% endif %}
+            </select>
+          </div>
+          <p class="field-hint">A classroom belongs to one academic year.</p>
+        </div>
+        {% else %}
+        <div class="field" style="grid-column: 1 / -1;">
+          <p class="field-hint" style="margin:0;">
+            No academic year exists yet. Enter the details below and it will be created together with this classroom
+            and set as the current academic year.
+          </p>
+        </div>
+        {% endif %}
+      </div>
+
+      <div id="newYearBlock" class="form-grid-2" style="margin-top:14px;">
+        <div class="field">
+          <label for="ay-start">Start Date</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <input type="date" id="ay-start">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="ay-end">End Date</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <input type="date" id="ay-end">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="ay-name">Academic Year Name</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
+            <input type="text" id="ay-name" maxlength="9" placeholder="e.g. 2025-2026">
+          </div>
+          <p class="field-hint">Format YYYY-YYYY. Filled in automatically from the start date.</p>
+        </div>
+
+        <div class="field">
+          <label for="ay-current">Current academic year</label>
+          <label style="display:flex; align-items:center; gap:8px; font-weight:500; margin-top:10px;">
+            <input type="checkbox" id="ay-current" {% if not academic_years %}checked disabled{% endif %}>
+            <span>Make this the current academic year</span>
+          </label>
+          <p class="field-hint">
+            {% if academic_years %}This will replace the existing current year.{% else %}The first academic year is always current.{% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ---------------- Classroom details ---------------- #}
+  <section class="panel">
+    <div class="panel-head"><h2>Classroom Details</h2></div>
+    <div class="panel-body">
+      <div class="form-grid-2">
+        <div class="field">
+          <label for="cr-department">Department*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <select id="cr-department" name="department" required>
+              {# Several departments (master/office admin): force a choice. One department (HOD): preselect it. #}
+              {% if departments|length != 1 %}
+              <option value="" disabled selected>Select department</option>
+              {% endif %}
+              {% for dept in departments %}
+              <option value="{{ dept.id }}" {% if departments|length == 1 %}selected{% endif %}>{{ dept.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if not departments %}
+          <p class="field-hint cr-error">No department is available to you. Contact the master admin.</p>
+          {% elif not can_manage_academic_years %}
+          <p class="field-hint">You can create classrooms for your own department only.</p>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label for="cr-section">Section*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>
+            <input type="text" id="cr-section" name="section" placeholder="e.g. A" required>
+          </div>
+          <p class="field-hint">Must be unique for the same academic year, department, year and semester.</p>
+        </div>
+
+        <div class="field">
+          <label for="cr-room">Room Number*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
+            <input type="text" id="cr-room" name="room_number" placeholder="e.g. B-204" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="cr-year">Year*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            <select id="cr-year" name="year" required>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">4th Year</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="cr-semester">Semester*</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <select id="cr-semester" name="semester" required></select>
+          </div>
+          <p class="field-hint">Options update automatically based on the selected year.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ---------------- Enroll students (optional) ---------------- #}
+  <section class="panel" id="studentsPanel" style="margin-top:18px; display:none;">
+    <div class="panel-head">
+      <h2>Enroll Students <span class="field-hint" style="margin:0;">(optional)</span></h2>
+      <span class="field-hint" style="margin:0;" id="en-summary"></span>
+    </div>
+    <div class="panel-body">
+      <div class="en-toolbar">
+        <label style="display:flex; align-items:center; gap:8px; font-weight:500; font-size:13px;">
+          <input type="checkbox" id="en-select-all">
+          <span>Select all</span>
+        </label>
+        <span id="en-selected-count" style="font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:600; color:var(--primary-dark); background:var(--gold-soft); padding:4px 10px; border-radius:99px;">0 selected</span>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="en-table">
+          <thead>
+            <tr>
+              <th style="width:36px;"></th>
+              <th>Roll No.</th>
+              <th>Admission No.</th>
+              <th>Name</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="en-rows"></tbody>
+        </table>
+      </div>
+      <p class="empty-note" id="en-empty" style="display:none;">No active students found for this department, year and semester.</p>
+      <p class="field-hint">Students already in another section of this term will be moved to this one.</p>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <span id="crMsg" class="field-hint" style="margin:0;"></span>
+    <a href="{% url 'college-classrooms' %}" class="btn-ghost">Cancel</a>
+    <button type="submit" id="crSubmit" class="btn-primary" {% if not departments %}disabled{% endif %}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Create Classroom
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    const CANDIDATES_URL = "{% url 'enrollment-candidates' %}";
+    const CREATE_URL = "{% url 'create-classroom' %}";
+    const LIST_URL = "{% url 'college-classrooms' %}";
+    const SEMESTERS_BY_YEAR = {
+      1: [[1, '1st Semester'], [2, '2nd Semester']],
+      2: [[3, '3rd Semester'], [4, '4th Semester']],
+      3: [[5, '5th Semester'], [6, '6th Semester']],
+      4: [[7, '7th Semester'], [8, '8th Semester']],
+    };
+
+    // API error key -> input id (used to show errors under the right field)
+    const FIELD_MAP = {
+      department: 'cr-department',
+      section: 'cr-section',
+      room_number: 'cr-room',
+      year: 'cr-year',
+      semester: 'cr-semester',
+      academic_year: 'cr-academic-year',
+    };
+    const NEW_YEAR_MAP = {
+      name: 'ay-name',
+      start_date: 'ay-start',
+      end_date: 'ay-end',
+      is_current: 'ay-current',
+    };
+
+    // ---------- Elements (all declared before anything runs) ----------
+    const form = document.getElementById('createClassroomForm');
+    const hasYears = form.dataset.hasYears === 'true';
+    const canManageYears = form.dataset.canManageYears === 'true';
+    const deptSelect = document.getElementById('cr-department');
+    const yearSelect = document.getElementById('cr-year');
+    const semesterSelect = document.getElementById('cr-semester');
+    const msg = document.getElementById('crMsg');
+    const banner = document.getElementById('formBanner');
+    const submitBtn = document.getElementById('crSubmit');
+
+    const ayLookup = document.getElementById('cr-academic-year');  // null when no years exist
+    const newBlock = document.getElementById('newYearBlock');
+    const ayStart = document.getElementById('ay-start');
+    const ayEnd = document.getElementById('ay-end');
+    const ayName = document.getElementById('ay-name');
+    const ayCurrent = document.getElementById('ay-current');
+
+    const panel = document.getElementById('studentsPanel');
+    const rowsEl = document.getElementById('en-rows');
+    const emptyEl = document.getElementById('en-empty');
+    const selectAll = document.getElementById('en-select-all');
+    const selectedCount = document.getElementById('en-selected-count');
+    const summary = document.getElementById('en-summary');
+
+    // ---------- Error display helpers ----------
+    function clearErrors() {
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+      form.querySelectorAll('.field-error').forEach((el) => el.remove());
+      form.querySelectorAll('.field.has-error').forEach((el) => el.classList.remove('has-error'));
+    }
+
+    // Flatten any DRF error shape (string, list, nested object) into one string
+    function toText(v) {
+      if (v == null) return '';
+      if (typeof v === 'string') return v;
+      if (Array.isArray(v)) return v.map(toText).filter(Boolean).join(' ');
+      if (typeof v === 'object') {
+        return Object.entries(v)
+          .map(([k, val]) => (k === 'non_field_errors' || k === 'detail' ? '' : k.replace(/_/g, ' ') + ': ') + toText(val))
+          .join(' ');
+      }
+      return String(v);
+    }
+
+    function showFieldError(inputId, text) {
+      const input = document.getElementById(inputId);
+      const field = input && input.closest('.field');
+      if (!field) return false;
+      field.classList.add('has-error');
+      const p = document.createElement('p');
+      p.className = 'field-error';
+      p.textContent = text;
+      field.appendChild(p);
+      return true;
+    }
+
+    function showBanner(lines) {
+      const list = lines.filter(Boolean);
+      banner.innerHTML = '';
+      const title = document.createElement('strong');
+      title.textContent = list.length > 1 ? 'Please fix the following:' : (list[0] || 'Could not save the classroom.');
+      banner.appendChild(title);
+      if (list.length > 1) {
+        const ul = document.createElement('ul');
+        list.forEach((t) => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+        banner.appendChild(ul);
+      }
+      banner.style.display = 'block';
+      banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      banner.focus({ preventScroll: true });
+    }
+
+    // Everything the user typed stays in place; we only add messages.
+    function showErrors(data) {
+      clearErrors();
+      const general = [];   // errors with no matching field
+
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        showBanner([toText(data) || 'Could not save the classroom.']);
+        return;
+      }
+
+      Object.entries(data).forEach(([key, val]) => {
+        if (key === 'new_academic_year' && val && typeof val === 'object' && !Array.isArray(val)) {
+          Object.entries(val).forEach(([sub, subVal]) => {
+            const placed = NEW_YEAR_MAP[sub] && showFieldError(NEW_YEAR_MAP[sub], toText(subVal));
+            if (!placed) general.push('Academic year: ' + toText(subVal));
+          });
+        } else if (FIELD_MAP[key]) {
+          if (!showFieldError(FIELD_MAP[key], toText(val))) general.push(toText(val));
+        } else if (key === 'student_ids') {
+          general.push('Students: ' + toText(val));
+        } else {
+          general.push(toText(val));
+        }
+      });
+
+      const hasInline = form.querySelector('.field-error');
+      showBanner(general.length ? general : [hasInline ? 'Please fix the highlighted fields and try again.' : 'Could not save the classroom.']);
+    }
+
+    // ---------- Semester options follow the selected year ----------
+    function syncSemesters() {
+      semesterSelect.innerHTML = '';
+      (SEMESTERS_BY_YEAR[yearSelect.value] || []).forEach(([value, label]) => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        semesterSelect.appendChild(opt);
+      });
+    }
+
+    // ---------- Academic year: pick from list, or (admins only) create a new one ----------
+    function creatingNewYear() {
+      if (!canManageYears) return false;          // HOD can never create a year
+      return !hasYears || (ayLookup && ayLookup.value === '__new__');
+    }
+
+    function syncNewYearBlock() {
+      const show = creatingNewYear();
+      newBlock.style.display = show ? '' : 'none';
+      [ayStart, ayEnd, ayName].forEach((el) => { el.required = show; });
+    }
+
+    let nameTouched = false;
+    let endTouched = false;
+    ayName.addEventListener('input', () => { nameTouched = true; });
+    ayEnd.addEventListener('input', () => { endTouched = true; });
+    ayStart.addEventListener('change', () => {
+      if (!ayStart.value) return;
+      const s = new Date(ayStart.value);  // yyyy-mm-dd is parsed as UTC
+      const y = s.getUTCFullYear();
+      if (!nameTouched) ayName.value = y + '-' + (y + 1);
+      if (!endTouched) {
+        const e = new Date(Date.UTC(y + 1, s.getUTCMonth(), s.getUTCDate() - 1));
+        ayEnd.value = e.toISOString().slice(0, 10);
+      }
+    });
+
+    // ---------- Students available for enrollment ----------
+    const checks = () => Array.from(rowsEl.querySelectorAll('.en-check'));
+
+    function updateCount() {
+      const n = checks().filter((c) => c.checked).length;
+      selectedCount.textContent = n + ' selected';
+    }
+
+    selectAll.addEventListener('change', () => {
+      checks().forEach((c) => { c.checked = selectAll.checked; });
+      updateCount();
+    });
+
+    function td(text) {
+      const el = document.createElement('td');
+      el.textContent = text || '—';
+      return el;
+    }
+
+    async function loadCandidates() {
+      rowsEl.innerHTML = '';
+      selectAll.checked = false;
+      updateCount();
+      if (!deptSelect.value || !semesterSelect.value) { panel.style.display = 'none'; return; }
+
+      const qs = new URLSearchParams({
+        department: deptSelect.value,
+        year: yearSelect.value,
+        semester: semesterSelect.value,
+        academic_year: ayLookup ? ayLookup.value : '__new__',
+      });
+      try {
+        const res = await fetch(CANDIDATES_URL + '?' + qs, { credentials: 'same-origin' });
+        if (!res.ok) {                              // 403: not your department / no permission
+          panel.style.display = 'none';
+          if (res.status === 403) msg.textContent = 'You cannot enroll students for this department.';
+          return;
+        }
+        msg.textContent = '';
+        const data = await res.json();
+        const list = data.students || [];
+        panel.style.display = '';
+        emptyEl.style.display = list.length ? 'none' : '';
+        summary.textContent = list.length + ' student' + (list.length === 1 ? '' : 's') + ' available';
+
+        list.forEach((s) => {
+          const tr = document.createElement('tr');
+
+          const tdCheck = document.createElement('td');
+          const cb = document.createElement('input');
+          cb.type = 'checkbox'; cb.value = s.id; cb.className = 'en-check';
+          cb.addEventListener('change', updateCount);
+          tdCheck.appendChild(cb);
+          tr.appendChild(tdCheck);
+
+          tr.appendChild(td(s.roll_number));
+          tr.appendChild(td(s.admission_number));
+          tr.appendChild(td(s.name));
+
+          const tdStatus = document.createElement('td');
+          const badge = document.createElement('span');
+          badge.className = 'en-badge muted';
+          badge.textContent = s.is_enrolled
+            ? 'In Section ' + (s.enrolled_section || '?') + ' (will move)'
+            : 'Not enrolled';
+          tdStatus.appendChild(badge);
+          tr.appendChild(tdStatus);
+
+          rowsEl.appendChild(tr);
+        });
+      } catch (e) {
+        panel.style.display = 'none';
+      }
+    }
+
+    // ---------- Wiring ----------
+    yearSelect.addEventListener('change', () => { syncSemesters(); loadCandidates(); });
+    [deptSelect, semesterSelect].forEach((el) => el.addEventListener('change', loadCandidates));
+    if (ayLookup) {
+      ayLookup.addEventListener('change', () => { syncNewYearBlock(); loadCandidates(); });
+    }
+
+    // ---------- Submit ----------
+    function getCsrfToken() {
+      const input = form.querySelector('input[name="csrfmiddlewaretoken"]');
+      return input ? input.value : '';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors();
+
+      const val = (id) => document.getElementById(id).value.trim();
+      const body = {
+        department: val('cr-department'),
+        section: val('cr-section'),
+        room_number: val('cr-room'),
+        year: parseInt(val('cr-year'), 10),
+        semester: parseInt(val('cr-semester'), 10),
+        student_ids: checks().filter((c) => c.checked).map((c) => c.value),
+      };
+
+      if (creatingNewYear()) {
+        body.new_academic_year = {
+          name: ayName.value.trim(),
+          start_date: ayStart.value,
+          end_date: ayEnd.value,
+          is_current: ayCurrent.checked || !hasYears,
+        };
+      } else {
+        body.academic_year = ayLookup.value;
+      }
+
+      submitBtn.disabled = true;
+      msg.textContent = 'Saving…';
+      try {
+        const res = await fetch(CREATE_URL, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+          body: JSON.stringify(body),
+        });
+
+        // The server can answer with HTML (500, CSRF failure), so don't assume JSON
+        let data = null;
+        try { data = await res.json(); } catch (_) { /* not JSON */ }
+
+        if (res.ok) {
+          window.location.href = LIST_URL + '?academic_year=' + data.academic_year;
+          return;
+        }
+
+        if (data) {
+          showErrors(data);
+        } else if (res.status === 403) {
+          showErrors({ detail: 'Your session has expired or you do not have permission. Refresh the page and try again.' });
+        } else {
+          showErrors({ detail: 'Something went wrong on the server (' + res.status + '). Please try again.' });
+        }
+      } catch (err) {
+        showErrors({ detail: 'Network error while saving. Check your connection and try again.' });
+      } finally {
+        msg.textContent = '';
+        submitBtn.disabled = false;
+      }
+    });
+
+    // Clear a field's error as soon as the user edits it
+    form.addEventListener('input', (e) => {
+      const field = e.target.closest && e.target.closest('.field.has-error');
+      if (field) {
+        field.classList.remove('has-error');
+        field.querySelectorAll('.field-error').forEach((el) => el.remove());
+      }
+    });
+
+    // ---------- Initial state ----------
+    syncSemesters();
+    syncNewYearBlock();
+    loadCandidates();   // runs immediately for a HOD because their only department is preselected
+  })();
+</script>
+{% endblock %}

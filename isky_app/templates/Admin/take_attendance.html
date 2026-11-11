@@ -1,0 +1,582 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Attendance · {{ classroom.name }}{% endblock %}
+{% block breadcrumb_label %}Attendance{% endblock %}
+
+{% block main_content %}
+<style>
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+  .stat-card .stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    margin-bottom: 6px;
+  }
+  .stat-card .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink-900);
+  }
+  .stat-card .stat-value .stat-pct {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-500);
+    margin-left: 4px;
+  }
+  .stat-card.absent .stat-value { color: #a8433d; }
+  .stat-card.present .stat-value { color: #0a6b66; }
+
+  .week-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+  }
+  .week-nav {
+    border: none;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ink-900);
+  }
+  .day-pill {
+    flex: 0 0 auto;
+    min-width: 54px;
+    text-align: center;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-900);
+    cursor: pointer;
+  }
+  .day-pill .dow { display: block; font-size: 10.5px; color: var(--ink-500); font-weight: 600; margin-top: 2px; }
+  .day-pill.selected { background: var(--secondary-light); border-color: var(--secondary-light); color: #fff; }
+  .day-pill.selected .dow { color: rgba(255,255,255,.8); }
+  .day-pill.future { opacity: .45; cursor: not-allowed; }
+
+  /* Sunday: always rendered as disabled (no periods are ever scheduled) */
+  .day-pill.sunday {
+    opacity: .5;
+    cursor: not-allowed;
+    background: repeating-linear-gradient(45deg, var(--cream), var(--cream) 6px, #ececec 6px, #ececec 12px);
+    color: var(--ink-500);
+    border-style: dashed;
+  }
+  .day-pill.sunday .dow { color: var(--ink-500); }
+  /* If the user lands on a Sunday via week navigation, keep it visibly selected but still non-clickable */
+  .day-pill.sunday.selected {
+    background: var(--secondary-light);
+    border-style: solid;
+    color: #fff;
+    opacity: .75;
+  }
+  .day-pill.sunday.selected .dow { color: rgba(255,255,255,.8); }
+
+  .today-btn {
+    margin-left: auto;
+    flex: 0 0 auto;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-900);
+    cursor: pointer;
+  }
+
+  .bulk-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .bulk-period-select {
+    min-width: 190px;
+    padding: 7px 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    background: var(--card);
+    color: var(--ink-900);
+  }
+  .bulk-btn[data-status="P"] { border-color: #0a6b66; color: #0a6b66; }
+  .bulk-btn[data-status="A"] { border-color: #a8433d; color: #a8433d; }
+  .bulk-btn[data-status="L"] { border-color: #a9823f; color: #a9823f; }
+  .bulk-btn[data-status="OD"] { border-color: #493267; color: #493267; }
+  .bulk-btn:disabled, .btn-primary:disabled, .bulk-period-select:disabled { opacity: .5; cursor: not-allowed; }
+
+  .matrix-wrap {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: auto;
+  }
+  table.matrix-table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 900px;
+  }
+  table.matrix-table th, table.matrix-table td {
+    border: 1px solid var(--line);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  table.matrix-table thead th {
+    background: var(--cream);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-900);
+  }
+  table.matrix-table thead th.locked-col { color: var(--ink-500); }
+  table.matrix-table thead .period-sub {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ink-500);
+    margin-top: 2px;
+    text-transform: none;
+  }
+  table.matrix-table tbody th {
+    background: var(--card);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-900);
+  }
+  td.locked-cell {
+    background: repeating-linear-gradient(45deg, var(--cream), var(--cream) 6px, #ececec 6px, #ececec 12px);
+  }
+  .status-select {
+    width: 100%;
+    min-width: 90px;
+    padding: 6px 7px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--cream);
+    color: var(--ink-900);
+  }
+  .status-select.st-P { background: var(--green-soft); border-color: #0a6b66; color: #0a6b66; }
+  .status-select.st-A { background: #f6dedc; border-color: #a8433d; color: #a8433d; }
+  .status-select.st-L { background: #f5ead2; border-color: #a9823f; color: #a9823f; }
+  .status-select.st-OD { background: #e6e0f0; border-color: #493267; color: #493267; }
+  .status-select:disabled { opacity: .55; cursor: not-allowed; }
+  .row-check:disabled { opacity: .3; cursor: not-allowed; }
+  .col-select-box { width: 13px; height: 13px; vertical-align: middle; margin-right: 4px; cursor: pointer; }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>{{ classroom.name }}{% if classroom.section %} - Section {{ classroom.section }}{% endif %}</h1>
+    <div class="college-line">
+      {{ classroom.department.name }} &middot; {{ classroom.get_year_display }} &middot; {{ classroom.get_semester_display }}
+    </div>
+  </div>
+  <a href="{% url 'classroom-attendance-select' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Change Class
+  </a>
+</div>
+
+<!-- ---------- Stat cards ---------- -->
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-label">Student Count</div>
+    <div class="stat-value">{{ stats.student_count }}</div>
+  </div>
+  <div class="stat-card present">
+    <div class="stat-label">Today Present</div>
+    <div class="stat-value">{{ stats.today_present }}<span class="stat-pct">{{ stats.today_present_pct }}%</span></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Current Period</div>
+    <div class="stat-value">{{ stats.current_period_count }}<span class="stat-pct">{{ stats.current_period_pct }}%</span></div>
+  </div>
+  <div class="stat-card absent">
+    <div class="stat-label">Today Absent</div>
+    <div class="stat-value">{{ stats.today_absent }}<span class="stat-pct">{{ stats.today_absent_pct }}%</span></div>
+  </div>
+</div>
+
+<!-- ---------- Week strip ---------- -->
+<form method="get" action="{% url 'classroom-take-attendance' %}" id="dateForm">
+  <input type="hidden" name="classroom" value="{{ classroom.id }}">
+  <input type="hidden" name="date" id="dateFormInput" value="{{ selected_date|date:'Y-m-d' }}">
+  <div class="week-strip">
+    <button type="button" class="week-nav" id="weekPrev">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    {% for wd in week_dates %}
+    {% with dow=wd.date|date:"w" %}
+    <div class="day-pill {% if wd.is_selected %}selected{% endif %} {% if wd.is_future %}future{% endif %} {% if dow == '0' %}sunday{% endif %}"
+         {% if dow == '0' %}
+           aria-disabled="true" title="Sunday – no classes"
+         {% elif wd.is_future %}
+           aria-disabled="true"
+         {% else %}
+           onclick="document.getElementById('dateFormInput').value='{{ wd.date|date:'Y-m-d' }}'; document.getElementById('dateForm').submit();"
+         {% endif %}>
+      {{ wd.date|date:"j" }}
+      <span class="dow">{{ wd.date|date:"D" }}</span>
+    </div>
+    {% endwith %}
+    {% endfor %}
+    <button type="button" class="week-nav" id="weekNext">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <button type="button" class="today-btn" id="jumpTodayBtn">Current Month</button>
+  </div>
+</form>
+
+{% if is_future %}
+  <section class="panel"><div class="panel-body"><p class="empty-note">Attendance can't be recorded for a future date. Pick today or an earlier date.</p></div></section>
+
+{% elif is_sunday %}
+  <section class="panel"><div class="panel-body"><p class="empty-note">No periods are scheduled on Sundays.</p></div></section>
+
+{% elif not periods %}
+  <section class="panel"><div class="panel-body"><p class="empty-note">No timetable periods found for this section on {{ selected_date|date:"l, M j" }}.</p></div></section>
+
+{% else %}
+<!-- ---------- Bulk action bar ---------- -->
+<div class="bulk-bar">
+  <select id="bulkPeriodSelect" class="bulk-period-select" {% if not any_editable %}disabled{% endif %}>
+    <option value="" selected disabled>Select a period…</option>
+    <option value="__all__">All editable periods</option>
+    {% for p in periods %}
+    {% if p.editable %}
+    <option value="{{ p.slot.id }}">Period {{ p.slot.period_number }} &middot; {{ p.slot.subject_mapping.subject.code }}</option>
+    {% endif %}
+    {% endfor %}
+  </select>
+
+  <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--ink-900); cursor:pointer;">
+    <input type="checkbox" id="selectAllBox" style="width:16px;height:16px;">
+    Select All
+  </label>
+
+  <span class="field-hint" style="margin:0 6px;">Apply to selected:</span>
+  <button type="button" class="btn-ghost bulk-btn" data-status="P" {% if not any_editable %}disabled{% endif %}>Present</button>
+  <button type="button" class="btn-ghost bulk-btn" data-status="A" {% if not any_editable %}disabled{% endif %}>Absent</button>
+  <button type="button" class="btn-ghost bulk-btn" data-status="OD" {% if not any_editable %}disabled{% endif %}>On Duty</button>
+  <button type="button" class="btn-ghost bulk-btn" data-status="L" {% if not any_editable %}disabled{% endif %}>Late</button>
+  <button type="button" id="clearBtn" class="btn-ghost" style="border-color:var(--ink-500); color:var(--ink-500); margin-left:auto;" {% if not any_editable %}disabled{% endif %}>
+    Clear
+  </button>
+</div>
+
+{% if not any_editable %}
+<p class="empty-note" style="margin-bottom:12px;">You don't have edit access to any period on this day — you can view existing records below, but only the assigned subject teacher, class advisor, HOD, or an admin can update them.</p>
+{% endif %}
+
+<!-- ---------- Matrix: students (rows) x periods (columns) ---------- -->
+<div class="matrix-wrap">
+  <table class="matrix-table" id="matrixTable">
+    <thead>
+      <tr>
+        <th style="width:34px;"><input type="checkbox" id="selectAllBoxHead" style="width:16px;height:16px;"></th>
+        <th>Student</th>
+        {% for p in periods %}
+        <th data-period="{{ p.slot.id }}" class="{% if not p.editable %}locked-col{% endif %}" style="text-align: center;">
+          {% if p.editable %}
+          <input type="checkbox" class="col-select-box" data-period="{{ p.slot.id }}" title="Select all students for this period">
+          {% endif %}
+          Period {{ p.slot.period_number }}
+          <span class="period-sub"> {{ p.slot.subject_mapping.subject.code|slice:":2"|upper }} - {{ p.slot.subject_mapping.subject.code }}{% if not p.editable %} · locked{% endif %}</span>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in roster_matrix %}
+      <tr data-student-id="{{ row.student.id }}">
+        <td><input type="checkbox" class="row-check" style="width:16px;height:16px;" {% if not any_editable %}disabled{% endif %}></td>
+        <td>
+          <div class="dir-item" style="border:none;padding:0;">
+            <div class="dir-avatar">{{ row.student.college_user.user.first_name|slice:":2"|upper }}</div>
+            <div class="dir-info">
+              <div class="dn">{{ row.student.college_user.user.first_name }} {{ row.student.college_user.user.last_name }}</div>
+              <div class="dm">{{ row.student.admission_number }}</div>
+            </div>
+          </div>
+        </td>
+        {% for cell in row.cells %}
+        <td data-period="{{ cell.period_id }}">
+          <select class="status-select st-{{ cell.status }}" data-period="{{ cell.period_id }}">
+            <option value="">—</option>
+            {% for code, label in status_choices %}
+            <option value="{{ code }}" {% if cell.status == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        {% endfor %}
+      </tr>
+      {% empty %}
+      <tr><td colspan="{{ periods|length|add:2 }}"><p class="empty-note">No active students found for this section.</p></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="form-actions">
+  <span id="saveStatusMsg" class="field-hint" style="margin:0;"></span>
+  {# Always starts disabled; JS enables it only when something has changed #}
+  <button type="button" id="saveAttendanceBtn" class="btn-primary"
+          data-locked="{% if not any_editable %}1{% else %}0{% endif %}" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    Save Attendance
+  </button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    const editablePeriodIds = new Set(
+      Array.from(document.querySelectorAll('#matrixTable thead th[data-period]:not(.locked-col)'))
+        .map((th) => th.dataset.period)
+    );
+
+    const saveBtn = document.getElementById('saveAttendanceBtn');
+
+    // ---- Dirty tracking: Save is enabled only if some cell differs from its loaded value ----
+    function isDirty() {
+      const selects = document.querySelectorAll('#matrixTable tbody select.status-select:not(:disabled)');
+      for (const sel of selects) {
+        if (sel.value !== (sel.dataset.initial || '')) return true;
+      }
+      return false;
+    }
+    function updateSaveState() {
+      if (!saveBtn) return;
+      if (saveBtn.dataset.locked === '1') { saveBtn.disabled = true; return; }
+      saveBtn.disabled = !isDirty();
+    }
+
+    // Lock cells that belong to non-editable (e.g. another teacher's) periods,
+    // remember each select's initial value, and paint by current status.
+    document.querySelectorAll('#matrixTable tbody select.status-select').forEach((sel) => {
+      sel.dataset.initial = sel.value;   // baseline for change detection
+
+      if (!editablePeriodIds.has(sel.dataset.period)) {
+        sel.disabled = true;
+        sel.closest('td').classList.add('locked-cell');
+      }
+      sel.classList.remove('st-P', 'st-A', 'st-L', 'st-OD');
+      if (sel.value) sel.classList.add('st-' + sel.value);
+      sel.addEventListener('change', () => {
+        sel.classList.remove('st-P', 'st-A', 'st-L', 'st-OD');
+        if (sel.value) sel.classList.add('st-' + sel.value);
+        updateSaveState();
+      });
+    });
+    updateSaveState();
+
+    // ---- Select all (rows) ----
+    const rowChecks = () => Array.from(document.querySelectorAll('.row-check:not(:disabled)'));
+    function wireSelectAll(boxId) {
+      const box = document.getElementById(boxId);
+      if (box) box.addEventListener('change', () => rowChecks().forEach((cb) => { cb.checked = box.checked; }));
+    }
+    wireSelectAll('selectAllBox');
+    wireSelectAll('selectAllBoxHead');
+
+    // ---- Column checkbox: select all students + target this period ----
+    const bulkPeriodSelect = document.getElementById('bulkPeriodSelect');
+    document.querySelectorAll('.col-select-box').forEach((box) => {
+      box.addEventListener('change', () => {
+        // Only one column drives "column mode" at a time
+        document.querySelectorAll('.col-select-box').forEach((b) => { if (b !== box) b.checked = false; });
+        if (box.checked) {
+          rowChecks().forEach((cb) => { cb.checked = true; });
+          if (bulkPeriodSelect) bulkPeriodSelect.value = box.dataset.period;
+        }
+      });
+    });
+    // Manually changing the period dropdown clears the column-checkbox shortcut
+    if (bulkPeriodSelect) {
+      bulkPeriodSelect.addEventListener('change', () => {
+        document.querySelectorAll('.col-select-box').forEach((b) => { b.checked = false; });
+      });
+    }
+
+    // Resolves the current period target: null = nothing chosen yet (must
+    // pick one before acting), 'all' = every editable column, else a slot id.
+    function resolveTargetPeriod() {
+      if (!bulkPeriodSelect || !bulkPeriodSelect.value) return null;
+      return bulkPeriodSelect.value === '__all__' ? 'all' : bulkPeriodSelect.value;
+    }
+
+    // ---- Bulk apply: requires an explicit period choice first, so a stray
+    // click can't silently overwrite every column at once ----
+    document.querySelectorAll('.bulk-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const status = btn.dataset.status;
+        const checked = rowChecks().filter((cb) => cb.checked);
+        if (checked.length === 0) { alert('Select at least one student first.'); return; }
+
+        const target = resolveTargetPeriod();
+        if (target === null) { alert('Choose a period first (or "All editable periods") before applying a status.'); return; }
+
+        checked.forEach((cb) => {
+          const row = cb.closest('tr');
+          const selector = target === 'all'
+            ? '.status-select:not(:disabled)'
+            : `.status-select[data-period="${target}"]:not(:disabled)`;
+          row.querySelectorAll(selector).forEach((sel) => {
+            sel.value = status;
+            sel.dispatchEvent(new Event('change'));   // also refreshes Save button state
+          });
+        });
+      });
+    });
+
+    // ---- Clear: resets the targeted cells for checked students back to
+    // blank ("—"), e.g. to undo an accidental "All editable periods" fill ----
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        const checked = rowChecks().filter((cb) => cb.checked);
+        if (checked.length === 0) { alert('Select at least one student first.'); return; }
+
+        const target = resolveTargetPeriod();
+        if (target === null) { alert('Choose a period first (or "All editable periods") before clearing.'); return; }
+
+        checked.forEach((cb) => {
+          const row = cb.closest('tr');
+          const selector = target === 'all'
+            ? '.status-select:not(:disabled)'
+            : `.status-select[data-period="${target}"]:not(:disabled)`;
+          row.querySelectorAll(selector).forEach((sel) => {
+            sel.value = '';
+            sel.dispatchEvent(new Event('change'));
+          });
+        });
+      });
+    }
+
+    // ---- Week strip nav ----
+    const dateInput = document.getElementById('dateFormInput');
+    const dateForm = document.getElementById('dateForm');
+    function shiftWeek(days) {
+      const d = new Date(dateInput.value + 'T00:00:00');
+      d.setDate(d.getDate() + days);
+      dateInput.value = d.toISOString().slice(0, 10);
+      dateForm.submit();
+    }
+    const prevBtn = document.getElementById('weekPrev');
+    const nextBtn = document.getElementById('weekNext');
+    if (prevBtn) prevBtn.addEventListener('click', () => shiftWeek(-7));
+    if (nextBtn) nextBtn.addEventListener('click', () => shiftWeek(7));
+    const jumpTodayBtn = document.getElementById('jumpTodayBtn');
+    if (jumpTodayBtn) jumpTodayBtn.addEventListener('click', () => {
+      dateInput.value = new Date().toISOString().slice(0, 10);
+      dateForm.submit();
+    });
+
+    // ---- Save ----
+    function getCookie(name) {
+      const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? match.pop() : '';
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        if (saveBtn.disabled) return;
+        const msg = document.getElementById('saveStatusMsg');
+
+        // Group by editable period into { timetable_slot, records: [...] }
+        const entriesByPeriod = {};
+        document.querySelectorAll('#matrixTable tbody tr[data-student-id]').forEach((row) => {
+          const studentId = row.dataset.studentId;
+          row.querySelectorAll('select.status-select:not(:disabled)').forEach((sel) => {
+            if (!sel.value) return;
+            const periodId = sel.dataset.period;
+            if (!entriesByPeriod[periodId]) entriesByPeriod[periodId] = [];
+            entriesByPeriod[periodId].push({ student: studentId, status: sel.value });
+          });
+        });
+
+        const entries = Object.entries(entriesByPeriod).map(([timetable_slot, records]) => ({
+          timetable_slot, records,
+        }));
+
+        if (entries.length === 0) {
+          msg.textContent = 'Nothing to save — mark at least one status.';
+          return;
+        }
+
+        saveBtn.disabled = true;
+        msg.textContent = 'Saving…';
+
+        try {
+          const res = await fetch("{% url 'classroom-save-attendance' %}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+              date: "{{ selected_date|date:'Y-m-d' }}",
+              entries: entries,
+            }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            msg.textContent = `Saved · ${data.students_recorded} record(s) across ${data.sessions_saved} period(s).`;
+            // Saved values become the new baseline → button goes back to disabled
+            document.querySelectorAll('#matrixTable tbody select.status-select').forEach((sel) => {
+              sel.dataset.initial = sel.value;
+            });
+          } else {
+            msg.textContent = (data.non_field_errors && data.non_field_errors[0]) || 'Could not save — check permissions.';
+            console.error(data);
+          }
+        } catch (e) {
+          msg.textContent = 'Network error while saving.';
+        } finally {
+          updateSaveState();   // re-enabled only if there are still unsaved changes
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

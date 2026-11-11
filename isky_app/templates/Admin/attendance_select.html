@@ -1,0 +1,87 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Take Attendance{% endblock %}
+{% block breadcrumb_label %}Attendance{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Take Attendance</h1>
+    <div class="college-line">
+      {% if access_level == "full" %}Pick a section below to open its roster
+      {% else %}Showing only the classrooms you have access to{% endif %}
+    </div>
+  </div>
+  {# Only master / office admin and HOD can enroll students #}
+  {% if can_enroll_students %}
+  <a href="{% url 'enroll-students' %}" class="btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+    Enroll Students
+  </a>
+  {% endif %}
+</div>
+
+{% if error %}
+<div class="error-banner" style="margin-bottom:16px;">{{ error }}</div>
+{% endif %}
+
+<style>
+  .attn-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:13px 4px;
+    border-bottom:1px solid var(--line); text-decoration:none; color:inherit; cursor:pointer; transition:background .12s ease; }
+  .attn-row:last-child { border-bottom:none; }
+  .attn-row:hover { background:var(--cream); }
+  .attn-row .arl { display:flex; align-items:center; gap:12px; min-width:0; }
+  .attn-row .arl svg { width:16px; height:16px; color:var(--ink-500); flex-shrink:0; }
+  .attn-row .an { font-size:13.5px; font-weight:600; color:var(--ink-900); }
+  .attn-row .am { font-size:11.5px; color:var(--ink-500); }
+  .attn-row .arr { display:flex; align-items:center; gap:12px; flex-shrink:0; }
+  .attn-count { font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:600; color:var(--primary-dark);
+    background:var(--gold-soft); padding:4px 10px; border-radius:99px; white-space:nowrap; }
+  .attn-chev { width:15px; height:15px; color:var(--ink-500); flex-shrink:0; }
+</style>
+
+{% for group in department_groups %}
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>{{ group.department.name }}</h2>
+    <span class="field-hint" style="margin:0;">{{ group.classroom_count }} classroom{{ group.classroom_count|pluralize }}</span>
+  </div>
+
+  <div class="panel-body">
+    {% for yg in group.year_groups %}
+      <div class="form-section-title" {% if forloop.first %}style="margin-top:0;"{% endif %}>{{ yg.year_display }}</div>
+
+      {% for row in yg.rows %}
+      <a href="{% url 'classroom-take-attendance' %}?classroom={{ row.classroom.id }}" class="attn-row">
+        <div class="arl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+          <div>
+            <div class="an">{{ row.classroom.name }}{% if row.classroom.section %} · Section {{ row.classroom.section }}{% endif %}</div>
+            <div class="am">{{ row.classroom.get_semester_display }}{% if row.classroom.room_number %} &middot; Room {{ row.classroom.room_number }}{% endif %}</div>
+          </div>
+        </div>
+        <div class="arr">
+          <span class="attn-count">{{ row.student_count }} student{{ row.student_count|pluralize }}</span>
+          <svg class="attn-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+      </a>
+      {% endfor %}
+    {% empty %}
+      <p class="empty-note">
+        {% if access_level == "full" %}No classrooms set up for this department yet.
+        {% else %}No classrooms available to you in this department.{% endif %}
+      </p>
+    {% endfor %}
+  </div>
+</section>
+{% empty %}
+<section class="panel">
+  <div class="panel-body">
+    <p class="empty-note">
+      {% if access_level == "full" %}No departments found. Create a department, then add classrooms, to take attendance.
+      {% else %}No classrooms are assigned to you for this academic year.{% endif %}
+    </p>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,208 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Platform Admin{% endblock %} · ISKY ERP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/platform.css' %}">
+  {% block tab_css %}{% endblock %}
+</head>
+<body>
+<div class="dash-app" id="dashApp">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="dash-sidebar" id="dashSidebar">
+    <div class="dash-brand">
+      <div class="dash-brand-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1A1406" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="name">ISKY</div>
+        <div class="sub">Platform Console</div>
+      </div>
+      <button type="button" class="dash-sidebar-close" id="dashSidebarClose" aria-label="Close menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <nav class="dash-nav">
+      <a href="{% url 'platform-dashboard' %}" class="{% if request.resolver_match.url_name == 'platform-dashboard' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg> Dashboard
+      </a>
+
+      <div class="nav-label">Colleges</div>
+
+
+      <a href="{% url 'platform-colleges' %}" class="{% if request.resolver_match.url_name == 'platform-colleges' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7h14v14"/><path d="M9 7V3h6v4"/><path d="M8 11h2M14 11h2M8 15h2M14 15h2"/></svg> Colleges
+      </a>
+
+      <a href="{% url 'platform-college-users' %}" class="{% if request.resolver_match.url_name == 'platform-college-users' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="M19 8v6M16 11h6"/></svg> College Users
+      </a>
+
+    </nav>
+
+    <div class="dash-sidebar-foot">
+      <div class="dash-admin-chip">
+        <div class="dash-admin-avatar" id="sbAvatar">PA</div>
+        <div class="who">
+          <div class="n" id="sbName">Platform Admin</div>
+          <div class="r">Platform administrator</div>
+        </div>
+      </div>
+      <button type="button" class="dash-logout" data-logout>Log out</button>
+    </div>
+  </aside>
+  <div class="dash-sidebar-overlay" id="dashSidebarOverlay"></div>
+
+  <!-- ============ MAIN ============ -->
+  <main class="dash-main">
+
+    <div class="dash-navbar">
+      <div class="dash-navbar-left">
+        <button type="button" class="dash-menu-btn" id="dashMenuBtn" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <nav class="dash-breadcrumb" aria-label="Breadcrumb">
+          {% block breadcrumb %}
+          <a href="{% url 'platform-dashboard' %}" class="crumb-link">Home</a>
+          <span class="crumb-sep">/</span>
+          <span class="crumb-current">{% block breadcrumb_label %}Dashboard{% endblock %}</span>
+          {% endblock %}
+        </nav>
+      </div>
+
+      <div class="dash-navbar-right">
+        <form class="dash-search" role="search" onsubmit="return false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" name="q" id="globalSearch" placeholder="Search colleges, users…">
+        </form>
+        <button type="button" class="dash-search-btn" id="dashSearchToggle" aria-label="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+
+        <button type="button" class="dash-bell" id="dashBell" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+        </button>
+        <div class="dash-notif-panel" id="dashNotifPanel">
+          <div class="np-head">Notifications</div>
+          <p class="empty-note">You're all caught up.</p>
+        </div>
+
+        <div class="dash-navbar-user" id="dashUserBtn">
+          <div class="av" id="nbAvatar">PA</div>
+          <div class="who">
+            <div class="n" id="nbName">Platform Admin</div>
+            <div class="r">Platform administrator</div>
+          </div>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          <div class="dash-user-menu" id="dashUserMenu">
+            <button type="button" data-logout>Log out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% block main_content %}{% endblock %}
+
+  </main>
+</div>
+
+<script>
+  /* ---------- Shared platform helpers (available to every tab) ---------- */
+  window.PLATFORM = {
+    // Change these if your DRF routes differ
+    api: {
+      colleges:     '/api/platform/colleges/',
+      collegeUsers: '/api/platform/college-users/',
+    },
+    loginUrl: '/platform/login/',
+
+    token() { return localStorage.getItem('platform_access_token'); },
+
+    logout() {
+      localStorage.removeItem('platform_access_token');
+      localStorage.removeItem('platform_refresh_token');
+      window.location.href = this.loginUrl;
+    },
+
+    // fetch wrapper: adds the Bearer token, redirects to login on 401
+    async request(url, options = {}) {
+      const res = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + this.token(),
+          ...(options.headers || {}),
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      });
+      if (res.status === 401) { this.logout(); throw { message: 'Session expired.' }; }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) throw data;
+      return data;
+    },
+
+    // Works with both plain arrays and DRF-paginated {results: []}
+    list(data) { return Array.isArray(data) ? data : (data.results || data.data || []); },
+
+    esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    },
+
+    errorText(err, fallback) {
+      if (err && err.errors) return Object.values(err.errors).flat().join(' ');
+      if (err && typeof err === 'object') {
+        const flat = Object.entries(err).filter(([k]) => k !== 'success')
+          .map(([k, v]) => (Array.isArray(v) ? v.join(' ') : (typeof v === 'string' ? v : ''))).filter(Boolean).join(' ');
+        if (flat) return flat;
+      }
+      return (err && err.message) || fallback;
+    },
+  };
+
+  // Guard: no token => back to login
+  if (!PLATFORM.token()) { window.location.href = PLATFORM.loginUrl; }
+
+  (function () {
+    const app = document.getElementById('dashApp');
+    document.getElementById('dashMenuBtn').addEventListener('click', () => app.classList.add('sidebar-open'));
+    document.getElementById('dashSidebarClose').addEventListener('click', () => app.classList.remove('sidebar-open'));
+    document.getElementById('dashSidebarOverlay').addEventListener('click', () => app.classList.remove('sidebar-open'));
+
+    const searchToggle = document.getElementById('dashSearchToggle');
+    const searchBox = document.querySelector('.dash-search');
+    searchToggle.addEventListener('click', () => {
+      const showing = getComputedStyle(searchBox).display !== 'none';
+      searchBox.style.display = showing ? 'none' : 'flex';
+      if (!showing) searchBox.querySelector('input').focus();
+    });
+
+    const bell = document.getElementById('dashBell');
+    const notifPanel = document.getElementById('dashNotifPanel');
+    const userBtn = document.getElementById('dashUserBtn');
+    const userMenu = document.getElementById('dashUserMenu');
+    bell.addEventListener('click', (e) => { e.stopPropagation(); notifPanel.classList.toggle('open'); userMenu.classList.remove('open'); });
+    userBtn.addEventListener('click', (e) => { e.stopPropagation(); userMenu.classList.toggle('open'); notifPanel.classList.remove('open'); });
+    document.addEventListener('click', () => { notifPanel.classList.remove('open'); userMenu.classList.remove('open'); });
+
+    document.querySelectorAll('[data-logout]').forEach(b => b.addEventListener('click', () => PLATFORM.logout()));
+
+    // Show the signed-in admin's name if the JWT carries one (optional)
+    try {
+      const p = JSON.parse(atob(PLATFORM.token().split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+      const name = p.full_name || p.name || p.email;
+      if (name) {
+        ['sbName','nbName'].forEach(id => document.getElementById(id).textContent = name);
+        ['sbAvatar','nbAvatar'].forEach(id => document.getElementById(id).textContent = name.slice(0,2).toUpperCase());
+      }
+    } catch (e) {}
+  })();
+</script>
+{% block tab_js %}{% endblock %}
+</body>
+</html>

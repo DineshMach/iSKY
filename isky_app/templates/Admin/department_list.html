@@ -1,0 +1,66 @@
+{% extends "Admin/sidebar.html" %}
+
+
+{% block title %}ISKY ERP · Departments{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Departments</span>
+{% endblock %}
+
+{% block main_content %}
+<div class="dash-topbar">
+  <div>
+    <h1>Departments</h1>
+    <div class="college-line">{{ departments|length }} department{{ departments|length|pluralize }} configured for {{ college.name|default:"your college" }}</div>
+  </div>
+  <a href="{% url 'department-create' %}" class="btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    Add Department
+  </a>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>All Departments</h2></div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead>
+        <tr>
+          <th>Department</th>
+          <th>Code</th>
+          <th>Students</th>
+          <th>Staff</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dept in departments %}
+        <tr>
+          <td>
+            <div class="dir-item" style="border:none;padding:0;">
+              <div class="dir-avatar">{{ dept.short_name|upper }}</div>
+              <div class="dir-info"><div class="dn">{{ dept.name }}</div></div>
+            </div>
+          </td>
+          <td><span class="dir-id">{{ dept.code }}</span></td>
+          <td>{{ dept.student_count|default:"—" }}</td>
+          <td>{{ dept.staff_count|default:"—" }}</td>
+          <td>
+            {% if dept.is_active %}
+            <span class="pill active">Active</span>
+            {% else %}
+            <span class="pill blocked">Inactive</span>
+            {% endif %}
+          </td>
+          <td><a href="{% url 'department-detail' dept.id %}" class="view-all">Manage</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><p class="empty-note">No departments added yet. Use the button above to add one.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,321 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Student Promotion{% endblock %}
+{% block breadcrumb_label %}Student Promotion{% endblock %}
+
+{% block main_content %}
+<style>
+  .promo-bar {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 18px; margin-bottom: 10px;
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px;
+  }
+  .promo-bar .field { margin-bottom: 0; }
+  .promo-bar .promo-field { flex: 1 1 150px; min-width: 130px; }
+  .promo-count {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
+    color: var(--primary-dark); background: var(--gold-soft);
+    padding: 6px 12px; border-radius: 99px; white-space: nowrap;
+  }
+  .promo-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .promo-msg { font-size: 12.5px; margin: 0 0 16px; min-height: 18px; color: var(--ink-500); }
+  .promo-msg.error { color: #b42318; }
+  .promo-msg.ok { color: #067647; }
+  .promo-skipped { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: #9a5b00; }
+
+  .dept-select-all {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600; color: var(--ink-500);
+    cursor: pointer; margin-bottom: 10px;
+  }
+  .dept-select-all input,
+  .student-check { width: 16px; height: 16px; accent-color: var(--primary-dark); cursor: pointer; }
+
+  .simple-table tbody tr { cursor: pointer; }
+  .simple-table tbody tr.is-selected td { background: var(--gold-soft); }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>Student Promotion</h1>
+    <div class="college-line">
+      {% if is_class_advisor_view %}
+        Promote the students of your class. Classrooms are created automatically and past records stay untouched.
+      {% else %}
+        Select students and choose where they go. Classrooms are created automatically and past records stay untouched.
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="promo-bar">
+  <div class="field promo-field">
+    <label for="pr-year">New Year</label>
+    <div class="input-shell">
+      <select id="pr-year">
+        <option value="">Keep same</option>
+        {# Admins: all four years. Class advisor: own year and the next one only. #}
+        {% for value, label in target_years %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="field promo-field">
+    <label for="pr-semester">New Semester</label>
+    <div class="input-shell">
+      <select id="pr-semester">
+        <option value="">Keep same</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="field promo-field">
+    <label for="pr-section">New Section</label>
+    <div class="input-shell">
+      <input type="text" id="pr-section" placeholder="Keep same" maxlength="50">
+    </div>
+  </div>
+
+  <div class="field promo-field">
+    <label for="pr-academic-year">Target Academic Year</label>
+    <div class="input-shell">
+      {% if can_create_academic_year %}
+      {# Admins can type a new academic year; it is created if it doesn't exist #}
+      <input type="text" id="pr-academic-year" list="pr-ay-list" maxlength="9"
+             placeholder="{% if current_academic_year %}{{ current_academic_year.name }} (current){% else %}e.g. 2026-2027{% endif %}"
+             pattern="\d{4}-\d{4}" autocomplete="off">
+      <datalist id="pr-ay-list">
+        {% for ay in academic_years %}<option value="{{ ay.name }}">{% endfor %}
+      </datalist>
+      {% else %}
+      {# Class advisor: choose from existing academic years only #}
+      <select id="pr-academic-year">
+        <option value="">{% if current_academic_year %}{{ current_academic_year.name }} (current){% else %}Current academic year{% endif %}</option>
+        {% for ay in academic_years %}
+        {% if not ay.is_current %}<option value="{{ ay.name }}">{{ ay.name }}</option>{% endif %}
+        {% endfor %}
+      </select>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="promo-actions">
+    <span id="promoSelectedCount" class="promo-count">0 selected</span>
+    <button type="button" id="promoteBtn" class="btn-primary" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      Promote Selected
+    </button>
+  </div>
+</div>
+
+<p class="field-hint" style="margin:0 0 6px;">
+  Leave a field on "Keep same" to use each student's current value. Blank academic year means the current one.
+  {% if can_create_academic_year %}A new academic year is created if it doesn't exist.
+  {% else %}New academic years can only be created by an admin.{% endif %}
+</p>
+<div id="promoMsg" class="promo-msg"></div>
+
+{% for group in department_groups %}
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>{{ group.department.name }}</h2>
+    <span class="field-hint" style="margin:0;">{{ group.student_count }} student{{ group.student_count|pluralize }}</span>
+  </div>
+
+  <div class="panel-body">
+    {% for yg in group.year_groups %}
+      <div class="form-section-title" {% if forloop.first %}style="margin-top:0;"{% endif %}>{{ yg.year_display }}</div>
+
+      <label class="dept-select-all">
+        <input type="checkbox" class="year-select-all" data-scope="{{ group.department.id }}-{{ yg.year }}">
+        Select all in {{ yg.year_display }}
+      </label>
+
+      <div class="table-wrap">
+        <table class="simple-table">
+          <thead>
+            <tr>
+              <th style="width:36px;"></th>
+              <th>Student</th>
+              <th>Roll No.</th>
+              <th>Semester</th>
+              <th>Section</th>
+              <th>Batch</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for stu in yg.students %}
+            <tr>
+              <td>
+                <input type="checkbox" class="student-check"
+                       data-scope="{{ group.department.id }}-{{ yg.year }}"
+                       data-student-id="{{ stu.id }}">
+              </td>
+              <td>
+                <div class="dir-item" style="border:none;padding:0;">
+                  <div class="dir-avatar">{{ stu.college_user.user.first_name|slice:":2"|upper }}</div>
+                  <div class="dir-info">
+                    <div class="dn">{{ stu.college_user.user.first_name }} {{ stu.college_user.user.last_name }}</div>
+                    <div class="dm">{{ stu.admission_number }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>{{ stu.roll_number|default:"—" }}</td>
+              <td>{{ stu.get_semester_display|default:"—" }}</td>
+              <td>{{ stu.section|default:"—" }}</td>
+              <td>{{ stu.academic_year|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% empty %}
+      <p class="empty-note">
+        {% if is_class_advisor_view %}No students found in your class.{% else %}No students in this department yet.{% endif %}
+      </p>
+    {% endfor %}
+  </div>
+</section>
+{% empty %}
+<section class="panel">
+  <div class="panel-body">
+    <p class="empty-note">No departments found.</p>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    const PROMOTE_URL = "{% url 'promote-students' %}";
+    const SEMESTERS_BY_YEAR = {
+      1: [[1, '1st Semester'], [2, '2nd Semester']],
+      2: [[3, '3rd Semester'], [4, '4th Semester']],
+      3: [[5, '5th Semester'], [6, '6th Semester']],
+      4: [[7, '7th Semester'], [8, '8th Semester']],
+    };
+
+    const yearSelect = document.getElementById('pr-year');
+    const semesterSelect = document.getElementById('pr-semester');
+    const sectionInput = document.getElementById('pr-section');
+    const ayInput = document.getElementById('pr-academic-year');   // <input> for admins, <select> for advisors
+    const countLabel = document.getElementById('promoSelectedCount');
+    const promoteBtn = document.getElementById('promoteBtn');
+    const msg = document.getElementById('promoMsg');
+
+    // ---------- Semester follows year ----------
+    yearSelect.addEventListener('change', () => {
+      semesterSelect.innerHTML = '<option value="">Keep same</option>';
+      (SEMESTERS_BY_YEAR[yearSelect.value] || []).forEach(([value, label]) => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        semesterSelect.appendChild(opt);
+      });
+    });
+
+    // ---------- Selection ----------
+    const allChecks = () => Array.from(document.querySelectorAll('.student-check'));
+
+    function setMsg(text, kind) {
+      msg.className = 'promo-msg' + (kind ? ' ' + kind : '');
+      msg.textContent = text;
+    }
+
+    function updateCount() {
+      const selected = allChecks().filter((cb) => cb.checked);
+      countLabel.textContent = selected.length + ' selected';
+      promoteBtn.disabled = selected.length === 0;
+
+      allChecks().forEach((cb) => cb.closest('tr').classList.toggle('is-selected', cb.checked));
+
+      document.querySelectorAll('.year-select-all').forEach((box) => {
+        const scoped = allChecks().filter((cb) => cb.dataset.scope === box.dataset.scope);
+        box.checked = scoped.length > 0 && scoped.every((cb) => cb.checked);
+      });
+    }
+
+    allChecks().forEach((cb) => {
+      cb.addEventListener('change', updateCount);
+      cb.addEventListener('click', (e) => e.stopPropagation());
+      cb.closest('tr').addEventListener('click', () => { cb.checked = !cb.checked; updateCount(); });
+    });
+
+    document.querySelectorAll('.year-select-all').forEach((box) => {
+      box.addEventListener('change', () => {
+        allChecks().filter((cb) => cb.dataset.scope === box.dataset.scope)
+          .forEach((cb) => { cb.checked = box.checked; });
+        updateCount();
+      });
+    });
+
+    // ---------- Promote ----------
+    function getCookie(name) {
+      const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? match.pop() : '';
+    }
+
+    function errorText(data) {
+      if (!data) return 'Could not promote students.';
+      const pick = (v) => (Array.isArray(v) ? v[0] : v);
+      return pick(data.academic_year) || pick(data.students) || pick(data.year) || pick(data.semester)
+        || pick(data.non_field_errors) || data.detail || 'Could not promote students.';
+    }
+
+    function showSkipped(list) {
+      const ul = document.createElement('ul');
+      ul.className = 'promo-skipped';
+      list.forEach((t) => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+      msg.appendChild(ul);
+    }
+
+    promoteBtn.addEventListener('click', async () => {
+      const ids = allChecks().filter((cb) => cb.checked).map((cb) => cb.dataset.studentId);
+      if (!ids.length) return;
+
+      const payload = { students: ids };
+      if (yearSelect.value) payload.year = parseInt(yearSelect.value, 10);
+      if (semesterSelect.value) payload.semester = parseInt(semesterSelect.value, 10);
+      if (sectionInput.value.trim()) payload.section = sectionInput.value.trim();
+      if (ayInput.value.trim()) payload.academic_year = ayInput.value.trim();
+
+      if (!payload.year && !payload.semester && !payload.section && !payload.academic_year) {
+        setMsg('Set at least one field (year, semester, section or academic year) before promoting.', 'error');
+        return;
+      }
+
+      promoteBtn.disabled = true;
+      setMsg('Promoting…');
+
+      try {
+        const res = await fetch(PROMOTE_URL, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          const skipped = data.skipped || [];
+          setMsg(data.message + ' Reloading…', skipped.length ? 'error' : 'ok');
+          if (skipped.length) showSkipped(skipped);
+          setTimeout(() => window.location.reload(), skipped.length ? 5000 : 900);
+        } else {
+          setMsg(errorText(data), 'error');
+          promoteBtn.disabled = false;
+        }
+      } catch (e) {
+        setMsg('Network error while promoting.', 'error');
+        promoteBtn.disabled = false;
+      }
+    });
+
+    updateCount();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Platform Admin · ISKY ERP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0F1420;
+      --panel: #171D2B;
+      --card: #1B2333;
+      --line: #2A3244;
+      --ink-100: #F3F5F9;
+      --ink-400: #8B94A7;
+      --ink-600: #5B6478;
+      --accent: #D6A94A;
+      --accent-dim: #9C7A2E;
+      --danger: #E5484D;
+      --danger-soft: rgba(229, 72, 77, .12);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--ink-100);
+      min-height: 100vh;
+    }
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+    }
+    @media (max-width: 920px) {
+      .shell { grid-template-columns: 1fr; }
+      .brand-panel { display: none; }
+    }
+
+    /* ---------------- Left: brand / network panel ---------------- */
+    .brand-panel {
+      position: relative;
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      padding: 56px 64px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: .01em;
+      color: var(--ink-100);
+      z-index: 2;
+      position: relative;
+    }
+    .brand-mark .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+    .brand-copy { max-width: 380px; z-index: 2; position: relative; }
+    .brand-copy h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: 34px;
+      line-height: 1.18;
+      color: var(--ink-100);
+      margin-bottom: 16px;
+      letter-spacing: -.01em;
+    }
+    .brand-copy p {
+      font-size: 14.5px;
+      line-height: 1.65;
+      color: var(--ink-400);
+    }
+
+    .network-svg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; opacity: .9; }
+
+    .brand-foot {
+      font-size: 12px;
+      color: var(--ink-600);
+      z-index: 2;
+      position: relative;
+    }
+
+    /* ---------------- Right: login card ---------------- */
+    .form-panel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+    }
+    .login-card { width: 100%; max-width: 380px; }
+    .login-card .lc-eyebrow {
+      font-size: 12.5px;
+      color: var(--ink-400);
+      margin-bottom: 8px;
+    }
+    .login-card h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: 24px;
+      color: var(--ink-100);
+      margin-bottom: 28px;
+    }
+
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-400);
+      margin-bottom: 8px;
+    }
+    .field input {
+      width: 100%;
+      background: var(--card);
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      padding: 13px 14px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14.5px;
+      color: var(--ink-100);
+      outline: none;
+      transition: border-color .15s ease;
+    }
+    .field input::placeholder { color: var(--ink-600); }
+    .field input:focus { border-color: var(--accent-dim); }
+
+    .otp-field input {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      letter-spacing: .5em;
+      text-align: center;
+      padding-left: 10px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--accent);
+      color: #1A1406;
+      border: none;
+      border-radius: 10px;
+      padding: 13px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s ease;
+      margin-top: 6px;
+    }
+    .btn-submit:hover { background: #E3B85E; }
+    .btn-submit:disabled { opacity: .55; cursor: not-allowed; }
+
+    .btn-link {
+      display: block;
+      width: 100%;
+      background: none;
+      border: none;
+      color: var(--ink-400);
+      font-size: 13px;
+      text-align: center;
+      margin-top: 16px;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .btn-link:hover { color: var(--ink-100); }
+
+    .alert {
+      display: none;
+      background: var(--danger-soft);
+      border: 1px solid rgba(229, 72, 77, .35);
+      color: #FF9A9D;
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 13px;
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+
+    .step { display: none; }
+    .step.is-active { display: block; }
+
+    .otp-hint {
+      font-size: 12.5px;
+      color: var(--ink-400);
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+
+    <!-- ---------------- Brand / network panel ---------------- -->
+    <aside class="brand-panel">
+      <svg class="network-svg" viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice">
+        <g stroke="#2A3244" stroke-width="1">
+          <line x1="480" y1="120" x2="380" y2="260"/>
+          <line x1="380" y1="260" x2="470" y2="380"/>
+          <line x1="380" y1="260" x2="230" y2="300"/>
+          <line x1="230" y1="300" x2="150" y2="440"/>
+          <line x1="230" y1="300" x2="330" y2="470"/>
+          <line x1="330" y1="470" x2="470" y2="380"/>
+          <line x1="330" y1="470" x2="260" y2="620"/>
+          <line x1="150" y1="440" x2="260" y2="620"/>
+          <line x1="470" y1="380" x2="420" y2="580"/>
+          <line x1="260" y1="620" x2="420" y2="580"/>
+        </g>
+        <g fill="#D6A94A">
+          <circle cx="480" cy="120" r="4" opacity=".8"/>
+          <circle cx="380" cy="260" r="5" opacity=".9"/>
+          <circle cx="470" cy="380" r="4" opacity=".7"/>
+          <circle cx="230" cy="300" r="4" opacity=".7"/>
+          <circle cx="150" cy="440" r="4" opacity=".6"/>
+          <circle cx="330" cy="470" r="5" opacity=".9"/>
+          <circle cx="260" cy="620" r="4" opacity=".7"/>
+          <circle cx="420" cy="580" r="4" opacity=".6"/>
+        </g>
+      </svg>
+
+      <div class="brand-mark"><span class="dot"></span>ISKY ERP — Platform</div>
+
+      <div class="brand-copy">
+        <h1>One layer, every campus.</h1>
+        <p>This console operates above individual colleges — provisioning institutions, managing platform admins, and overseeing the system every campus runs on.</p>
+      </div>
+
+      <div class="brand-foot">Restricted access · Platform administrators only</div>
+    </aside>
+
+    <!-- ---------------- Login form ---------------- -->
+    <main class="form-panel">
+      <div class="login-card">
+
+        <div id="form-alert" class="alert"></div>
+
+        <!-- STEP 1: email + password -->
+        <div class="step is-active" id="step-credentials">
+          <div class="lc-eyebrow">Sign in</div>
+          <h2>Platform Admin</h2>
+
+          <form id="login-form" autocomplete="off">
+            <div class="field">
+              <label for="li-email">Email</label>
+              <input type="email" id="li-email" placeholder="you@isky.app" required>
+            </div>
+            <div class="field">
+              <label for="li-password">Password</label>
+              <input type="password" id="li-password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn-submit" id="login-submit-btn">Continue</button>
+          </form>
+        </div>
+
+        <!-- STEP 2: TOTP code -->
+        <div class="step" id="step-otp">
+          <div class="lc-eyebrow">Verification</div>
+          <h2>Enter your code</h2>
+          <p class="otp-hint">Open your authenticator app and enter the 6-digit code for this account.</p>
+
+          <form id="otp-form" autocomplete="off">
+            <div class="field otp-field">
+              <label for="li-otp">Authentication code</label>
+              <input type="text" id="li-otp" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" required>
+            </div>
+            <button type="submit" class="btn-submit" id="otp-submit-btn">Verify &amp; sign in</button>
+          </form>
+          <button type="button" class="btn-link" id="back-to-login-btn">Use a different account</button>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <script>
+    (function () {
+      const alertBox = document.getElementById('form-alert');
+      const stepCredentials = document.getElementById('step-credentials');
+      const stepOtp = document.getElementById('step-otp');
+      const loginForm = document.getElementById('login-form');
+      const otpForm = document.getElementById('otp-form');
+      const loginBtn = document.getElementById('login-submit-btn');
+      const otpBtn = document.getElementById('otp-submit-btn');
+
+      let pendingToken = null;
+
+      function showAlert(message) {
+        alertBox.textContent = message;
+        alertBox.style.display = 'block';
+      }
+      function clearAlert() {
+        alertBox.style.display = 'none';
+      }
+
+      function jsonFetch(url, body) {
+        return fetch(url, {
+          method: 'POST',
+          credentials: 'same-origin',   // needed so the session cookie carrying pending_login survives to the 2FA step
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }).then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data.success === false) throw data;
+          return data;
+        });
+      }
+
+      function onLoginSuccess(data) {
+        localStorage.setItem('platform_access_token', data.access);
+        localStorage.setItem('platform_refresh_token', data.refresh);
+        window.location.href = '/platform/dashboard/';
+      }
+
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearAlert();
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Checking…';
+
+        try {
+          const data = await jsonFetch('/auth/platform/login/', {
+            email: document.getElementById('li-email').value.trim(),
+            password: document.getElementById('li-password').value,
+          });
+
+          if (data.requires_2fa) {
+            pendingToken = data.temporary_token;
+            stepCredentials.classList.remove('is-active');
+            stepOtp.classList.add('is-active');
+            document.getElementById('li-otp').focus();
+          } else {
+            onLoginSuccess(data);
+          }
+        } catch (err) {
+          const msg = (err.errors && Object.values(err.errors).flat().join(' ')) || err.message || 'Could not sign in.';
+          showAlert(msg);
+        } finally {
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Continue';
+        }
+      });
+
+      otpForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearAlert();
+        otpBtn.disabled = true;
+        otpBtn.textContent = 'Verifying…';
+
+        try {
+          const data = await jsonFetch('/api/platform/login/verify-2fa/', {
+            temporary_token: pendingToken,
+            otp: document.getElementById('li-otp').value.trim(),
+          });
+          onLoginSuccess(data);
+        } catch (err) {
+          const msg = (err.errors && Object.values(err.errors).flat().join(' ')) || err.message || 'Invalid code.';
+          showAlert(msg);
+        } finally {
+          otpBtn.disabled = false;
+          otpBtn.textContent = 'Verify & sign in';
+        }
+      });
+
+      document.getElementById('back-to-login-btn').addEventListener('click', () => {
+        pendingToken = null;
+        clearAlert();
+        stepOtp.classList.remove('is-active');
+        stepCredentials.classList.add('is-active');
+        document.getElementById('li-password').value = '';
+      });
+    })();
+  </script>
+</body>
+</html>

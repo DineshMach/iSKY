@@ -1,0 +1,176 @@
+{% extends "PlatformAdmin/sidebar.html" %}
+
+{% block title %}College Users{% endblock %}
+{% block breadcrumb_label %}College Users{% endblock %}
+
+{% block main_content %}
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>College users</h1>
+      <p>Create the login a college uses to run its own portal.</p>
+    </div>
+  </div>
+
+  <div class="form-layout">
+
+    <!-- ===== Create form ===== -->
+    <section class="panel">
+      <div class="panel-head"><h3>Create college user</h3></div>
+      <div class="panel-body">
+        <div id="formAlert" class="alert"></div>
+
+        <form id="createUserForm" autocomplete="off">
+          <div class="form-grid">
+            <div class="field full">
+              <label for="cu-college">College</label>
+              <select id="cu-college" required><option value="">Loading colleges…</option></select>
+            </div>
+
+            <div class="field">
+              <label for="cu-first">First name</label>
+              <input type="text" id="cu-first" placeholder="Priya" required>
+            </div>
+            <div class="field">
+              <label for="cu-last">Last name</label>
+              <input type="text" id="cu-last" placeholder="Raman">
+            </div>
+
+            <div class="field">
+              <label for="cu-email">Email</label>
+              <input type="email" id="cu-email" placeholder="priya@college.edu" required>
+            </div>
+            <div class="field">
+              <label for="cu-phone">Phone</label>
+              <input type="tel" id="cu-phone" placeholder="+91 98765 43210">
+            </div>
+
+            <div class="field">
+              <label for="cu-role">Role</label>
+              <select id="cu-role" required>
+                <option value="master_admin">Master Admin</option>
+                <option value="office_admin">Office Admin</option>
+                <option value="finance_admin">Finance Admin</option>
+                <option value="staff_admin">Staff Admin</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="cu-empid">Employee ID</label>
+              <input type="text" id="cu-empid" placeholder="EMP-0001">
+            </div>
+
+            <div class="field full">
+              <label for="cu-password">Temporary password</label>
+              <div class="input-row">
+                <input type="text" id="cu-password" placeholder="At least 8 characters" minlength="8" required>
+                <button type="button" class="btn btn-ghost" id="genPassword">Generate</button>
+              </div>
+              <div class="hint">Share this with the user securely. They should change it after first sign-in.</div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="createBtn">Create user</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===== Existing users ===== -->
+    <section class="panel">
+      <div class="panel-head"><h3>All college users</h3></div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Name</th><th>Email</th><th>College</th><th>Role</th><th>Status</th></tr></thead>
+          <tbody id="userRows"><tr><td colspan="5" class="state-row">Loading users…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    const { esc, list } = PLATFORM;
+    const roleLabel = { master_admin: 'Master Admin', office_admin: 'Office Admin', finance_admin: 'Finance Admin', staff_admin: 'Staff Admin' };
+    const collegeSel = document.getElementById('cu-college');
+    const alertBox = document.getElementById('formAlert');
+    const form = document.getElementById('createUserForm');
+    const btn = document.getElementById('createBtn');
+    let collegeNames = {};
+
+    function showAlert(type, msg) { alertBox.className = 'alert ' + type; alertBox.textContent = msg; }
+    function clearAlert() { alertBox.className = 'alert'; alertBox.textContent = ''; }
+
+    async function loadColleges() {
+      try {
+        const colleges = list(await PLATFORM.request(PLATFORM.api.colleges));
+        collegeNames = Object.fromEntries(colleges.map(c => [c.id, c.name]));
+        collegeSel.innerHTML = '<option value="">Select a college</option>' +
+          colleges.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+      } catch (e) {
+        collegeSel.innerHTML = '<option value="">Could not load colleges</option>';
+      }
+    }
+
+    async function loadUsers() {
+      const rows = document.getElementById('userRows');
+      try {
+        const users = list(await PLATFORM.request(PLATFORM.api.collegeUsers));
+        rows.innerHTML = users.length ? users.map(u => {
+          const name = u.full_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || '—';
+          const college = u.college_name || collegeNames[u.college] || u.college || '—';
+          return `<tr>
+            <td>${esc(name)}</td>
+            <td class="mono">${esc(u.email)}</td>
+            <td>${esc(college)}</td>
+            <td><span class="pill role">${esc(roleLabel[u.role] || u.role || '—')}</span></td>
+            <td><span class="pill ${u.is_active === false ? 'off' : 'ok'}">${u.is_active === false ? 'Inactive' : 'Active'}</span></td>
+          </tr>`;
+        }).join('') : '<tr><td colspan="5" class="state-row">No college users yet. Create the first one using the form.</td></tr>';
+      } catch (e) {
+        rows.innerHTML = '<tr><td colspan="5" class="state-row">Could not load users.</td></tr>';
+      }
+    }
+
+    document.getElementById('genPassword').addEventListener('click', () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+      const buf = new Uint32Array(14);
+      crypto.getRandomValues(buf);
+      document.getElementById('cu-password').value = Array.from(buf, n => chars[n % chars.length]).join('');
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert();
+      btn.disabled = true; btn.textContent = 'Creating…';
+
+      const email = document.getElementById('cu-email').value.trim();
+      const payload = {
+        college: collegeSel.value,
+        first_name: document.getElementById('cu-first').value.trim(),
+        last_name: document.getElementById('cu-last').value.trim(),
+        email,
+        phone: document.getElementById('cu-phone').value.trim(),
+        role: document.getElementById('cu-role').value,
+        employee_id: document.getElementById('cu-empid').value.trim(),
+        password: document.getElementById('cu-password').value,
+      };
+
+      try {
+        await PLATFORM.request(PLATFORM.api.collegeUsers, { method: 'POST', body: payload });
+        showAlert('success', 'Created ' + email + '. They can now sign in to their college portal.');
+        form.reset();
+        loadUsers();
+      } catch (err) {
+        showAlert('error', PLATFORM.errorText(err, 'Could not create the user.'));
+      } finally {
+        btn.disabled = false; btn.textContent = 'Create user';
+      }
+    });
+
+    loadColleges().then(loadUsers);
+  })();
+</script>
+{% endblock %}

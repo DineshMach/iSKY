@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}ISKY ERP · Administrative Login{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Page-specific: none — this page uses only shared .stage / .brand-panel / .form-panel classes */
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stage">
+
+  <!-- LEFT: brand panel -->
+  <div class="brand-panel">
+    <div class="brand-mark">
+      <div class="brand-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="name">ISKY</div>
+        <div class="sub">ERP PORTAL</div>
+      </div>
+    </div>
+
+    <h1 class="headline">Welcome<br><em>back</em>, administrator.</h1>
+    <p class="lede">Sign in to manage admissions, student records, finance, examinations, staff, and campus operations — all from one console.</p>
+
+    <div class="capability-rail">
+      <span class="chip">ADMISSIONS</span>
+      <span class="chip">FINANCE</span>
+      <span class="chip">EXAMINATIONS</span>
+      <span class="chip">STAFF</span>
+      <span class="chip">REPORTS</span>
+    </div>
+
+    <div class="status-line">
+      <span class="status-dot"></span>
+      All systems operational · Secure session · TLS 1.3
+    </div>
+  </div>
+
+  <!-- RIGHT: form panel -->
+  <div class="form-panel">
+    <div class="form-inner">
+      <div class="id-chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="m16 12 2 2 4-4"/></svg>
+      </div>
+
+    {% if messages %}
+    <div class="messages-container" id="msgContainer">
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}" role="alert">
+        <span class="alert-text">{{ message }}</span>
+        <button type="button" class="alert-close" aria-label="Dismiss">&times;</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+      <h1>Administrative Login</h1>
+      <p class="desc">Sign in to access the Administrative Dashboard</p>
+
+      {% if form.non_field_errors %}
+        <div class="error-banner">{{ form.non_field_errors.0 }}</div>
+      {% endif %}
+
+      <form id="loginForm" method="post" action="{% url 'college-admin-login' %}">
+        {% csrf_token %}
+
+        <div class="field">
+          <label for="empId">Email ID</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+            <input id="empId" name="user_id" type="text" placeholder="Enter your Email ID" autocomplete="username" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="pwd">Password</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input id="pwd" name="password" type="password" placeholder="Enter secure password" autocomplete="current-password" required />
+            <button type="button" class="toggle-visibility" id="toggleBtn" aria-label="Show password">
+              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.6 19.6 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a19.7 19.7 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="row-between">
+          <label class="remember"><input type="checkbox" name="remember" checked /> Remember me</label>
+          <a href="{% url 'forgot-password' %}" class="forgot">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn-login">
+          Login
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </form>
+
+      <div class="divider">OR</div>
+      <p class="help">Looking for the staff console? <a href="{% url 'staff_login' %}">Go to Staff Login</a></p>
+      {% comment %} <p class="help">Need help? <a href="#">Contact system administrator</a></p> {% endcomment %}
+      <p class="foot-note">© 2026 ISKY · All rights reserved</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const toggleBtn = document.getElementById('toggleBtn');
+  const pwd = document.getElementById('pwd');
+  const eyeIcon = document.getElementById('eyeIcon');
+  toggleBtn.addEventListener('click', () => {
+    const isPwd = pwd.type === 'text';
+    pwd.type = isPwd ?  'password' : 'text' ;
+    eyeIcon.innerHTML = isPwd
+      ?  '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.6 19.6 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a19.7 19.7 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>' : '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>' ;
+    toggleBtn.setAttribute('aria-label', isPwd ? 'Hide password' : 'Show password');
+  });
+
+  setTimeout(() => {
+    document.querySelectorAll('.alert .alert-close').forEach((b) => b.click());
+  }, 6000);
+
+  // Dismiss alert messages
+  document.querySelectorAll('.alert-close').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const alert = btn.closest('.alert');
+      alert.style.transition = 'opacity .2s ease';
+      alert.style.opacity = '0';
+      setTimeout(() => {
+        alert.remove();
+        // Remove the empty container so it doesn't leave a gap
+        const container = document.getElementById('msgContainer');
+        if (container && !container.querySelector('.alert')) container.remove();
+      }, 200);
+    });
+  });
+
+  // Dismiss alert messages
+document.querySelectorAll('.alert-close').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        const alert = btn.closest('.alert');
+
+        alert.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        alert.style.opacity = '0';
+        alert.style.transform = 'translateY(-8px)';
+
+        setTimeout(() => {
+            alert.remove();
+
+            const container = document.getElementById('msgContainer');
+
+            if (container && !container.querySelector('.alert')) {
+                container.remove();
+            }
+        }, 300);
+    });
+});
+
+// Auto dismiss after 6 seconds
+setTimeout(() => {
+    document.querySelectorAll('.alert-close').forEach((btn) => {
+        btn.click();
+    });
+}, 6000);
+</script>
+{% endblock %}

@@ -1,0 +1,436 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · {{ subject.name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'college-subjects' %}" class="crumb-link">Subjects</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">{{ subject.code }}</span>
+{% endblock %}
+
+{% block main_content %}
+<style>
+  .profile-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .profile-head .p-name { font-size: 19px; font-weight: 700; color: var(--ink-900); }
+  .profile-head .p-meta { font-size: 13px; color: var(--ink-500); margin-top: 2px; }
+
+  .edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .edit-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    color: var(--ink-500);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .edit-field input[type="text"],
+  .edit-field input[type="number"],
+  .edit-field select {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    background: var(--cream);
+    color: var(--ink-900);
+  }
+  .edit-field input:focus,
+  .edit-field select:focus {
+    outline: none;
+    border-color: var(--secondary-light);
+    box-shadow: 0 0 0 3px rgba(10, 107, 102, .12);
+  }
+  .edit-field input:disabled,
+  .edit-field select:disabled {
+    background: var(--card);
+    color: var(--ink-500);
+    cursor: not-allowed;
+  }
+  .toggle-row { display: flex; align-items: center; gap: 10px; padding-top: 8px; }
+  .toggle-row input:disabled { cursor: not-allowed; opacity: .5; }
+
+  .panel-head-actions { display: flex; align-items: center; gap: 10px; }
+  #editModeBanner { font-size: 12px; font-weight: 600; color: var(--secondary-light); display: none; }
+
+  .mapping-teacher-select {
+    width: 100%;
+    min-width: 170px;
+    padding: 7px 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-family: 'Inter', sans-serif;
+    background: var(--cream);
+    color: var(--ink-900);
+  }
+  .mapping-teacher-select:disabled { background: var(--card); color: var(--ink-500); cursor: not-allowed; }
+  .row-edit-btn, .row-save-btn, .row-cancel-btn {
+    border: none;
+    background: none;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+  .row-edit-btn { color: var(--secondary-light); }
+  .row-save-btn { color: #0a6b66; }
+  .row-cancel-btn { color: var(--ink-500); }
+  .row-msg { font-size: 11px; color: var(--ink-500); margin-left: 6px; }
+  .mapping-teacher-select,
+.mapping-year-select,
+.mapping-semester-select {
+  width: 100%;
+  min-width: 110px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-family: 'Inter', sans-serif;
+  background: var(--cream);
+  color: var(--ink-900);
+}
+.mapping-teacher-select:disabled,
+.mapping-year-select:disabled,
+.mapping-semester-select:disabled { background: var(--card); color: var(--ink-500); cursor: not-allowed; }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>Subject</h1>
+    <div class="college-line">Core details and department teacher assignments</div>
+  </div>
+  <a href="{% url 'college-subjects' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Subjects
+  </a>
+</div>
+
+<!-- ---------- Header ---------- -->
+<div class="profile-head">
+  <div class="dir-avatar">{{ subject.code|slice:":2"|upper }}</div>
+  <div>
+    <div class="p-name">{{ subject.name }}</div>
+    <div class="p-meta">{{ subject.code }} &middot; {{ subject.get_subject_type_display }}</div>
+  </div>
+  <span class="pill {% if subject.is_active %}active{% else %}blocked{% endif %}" style="margin-left:auto;">
+    {% if subject.is_active %}Active{% else %}Inactive{% endif %}
+  </span>
+</div>
+
+<!-- ---------- Editable subject fields ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>Subject Details</h2>
+    <div class="panel-head-actions">
+      <span id="editModeBanner">Editing — remember to save</span>
+      <span id="subjectSaveMsg" class="field-hint" style="margin:0;"></span>
+      {% if can_edit_subject %}
+      <button type="button" id="editToggleBtn" class="btn-ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Edit
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="panel-body">
+    <form id="subjectForm">
+      <div class="edit-grid">
+        <div class="edit-field">
+          <label for="f-name">Subject Name</label>
+          <input type="text" id="f-name" name="name" value="{{ subject.name }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-short_name">Short Name</label>
+          <input type="text" id="f-short_name" name="short_name" value="{{ subject.short_name|default:'--' }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-code">Code</label>
+          <input type="text" id="f-code" name="code" value="{{ subject.code }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-type">Subject Type</label>
+          <select id="f-type" name="subject_type" disabled>
+            <option value="theory" {% if subject.subject_type == "theory" %}selected{% endif %}>Theory</option>
+            <option value="practical" {% if subject.subject_type == "practical" %}selected{% endif %}>Practical / Lab</option>
+            <option value="elective" {% if subject.subject_type == "elective" %}selected{% endif %}>Elective</option>
+          </select>
+        </div>
+        <div class="edit-field">
+          <label for="f-credits">Credits</label>
+          <input type="number" id="f-credits" name="credits" value="{{ subject.credits }}" min="0" max="20" disabled>
+        </div>
+        <div class="edit-field">
+          <label>Active Status</label>
+          <div class="toggle-row">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink-900);cursor:pointer;">
+              <input type="checkbox" id="f-active" name="is_active" {% if subject.is_active %}checked{% endif %} disabled style="width:16px;height:16px;">
+              <span id="activeLabel">{% if subject.is_active %}Active{% else %}Inactive{% endif %}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {% if can_edit_subject %}
+      <div class="form-actions" id="saveRow" style="display:none;">
+        <button type="button" id="cancelEditBtn" class="btn-ghost">Cancel</button>
+        <button type="button" id="saveSubjectBtn" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Save Changes
+        </button>
+      </div>
+      {% else %}
+      <p class="empty-note" style="margin-top:14px;">Only the HOD of a mapped department, Office Admin, or Principal can edit these details.</p>
+      {% endif %}
+    </form>
+  </div>
+</section>
+
+<!-- ---------- Department mappings + teacher assignment ---------- -->
+<section class="panel">
+  <div class="panel-head"><h2>Department Assignments</h2></div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead>
+        <tr><th>Department</th><th>Year</th><th>Semester</th><th>Staff (Teacher)</th><th style="width:150px;"></th></tr>
+      </thead>
+      <tbody>
+        {% for row in mapping_rows %}
+        <tr data-mapping-id="{{ row.mapping.id }}">
+          <td>{{ row.mapping.department.name }}</td>
+          <td>
+            <select class="mapping-year-select" disabled>
+              {% for val, label in year_choices %}
+                <option value="{{ val }}" {% if row.mapping.year == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td>
+            <select class="mapping-semester-select" disabled>
+              {% for val, label in semester_choices %}
+                <option value="{{ val }}" {% if row.mapping.semester == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td>
+            <select class="mapping-teacher-select" disabled>
+              <option value="">Unassigned</option>
+              {% for staff in staff_members %}
+              <option value="{{ staff.id }}" {% if row.mapping.teacher_id == staff.id %}selected{% endif %}>
+                {{ staff.college_user.user.first_name }} {{ staff.college_user.user.last_name }}{% if staff.department %} · {{ staff.department.short_name|default:staff.department.name }}{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </td>
+          <td>
+            {% if row.can_edit %}
+            <button type="button" class="row-edit-btn">Edit</button>
+            <button type="button" class="row-save-btn" style="display:none;">Save</button>
+            <button type="button" class="row-cancel-btn" style="display:none;">Cancel</button>
+            <span class="row-msg"></span>
+            {% else %}
+            <span class="field-hint" style="margin:0;">View only</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><p class="empty-note">This subject isn't mapped to any department yet.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    function getCookie(name) {
+      const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? match.pop() : '';
+    }
+
+    // ---------- Subject core fields: lock-until-edit ----------
+    const editableInputs = ['f-name', 'f-code','f-short_name', 'f-type', 'f-credits', 'f-active'].map((id) => document.getElementById(id));
+    const editToggleBtn = document.getElementById('editToggleBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const saveRow = document.getElementById('saveRow');
+    const editModeBanner = document.getElementById('editModeBanner');
+    const activeBox = document.getElementById('f-active');
+    const activeLabel = document.getElementById('activeLabel');
+
+    let originalValues = null;
+    function snapshot() {
+      originalValues = {
+        name: document.getElementById('f-name').value,
+        code: document.getElementById('f-code').value,
+        subject_type: document.getElementById('f-type').value,
+        credits: document.getElementById('f-credits').value,
+        short_name: document.getElementById('f-short_name').value,
+        is_active: activeBox.checked,
+      };
+    }
+
+    function setEditing(on) {
+      editableInputs.forEach((el) => { if (el) el.disabled = !on; });
+      if (saveRow) saveRow.style.display = on ? 'flex' : 'none';
+      if (editModeBanner) editModeBanner.style.display = on ? 'inline' : 'none';
+      if (editToggleBtn) editToggleBtn.style.display = on ? 'none' : 'inline-flex';
+    }
+
+    if (editToggleBtn) {
+      editToggleBtn.addEventListener('click', () => { snapshot(); setEditing(true); });
+    }
+
+    if (cancelEditBtn) {
+      cancelEditBtn.addEventListener('click', () => {
+        if (originalValues) {
+          document.getElementById('f-name').value = originalValues.name;
+          document.getElementById('f-code').value = originalValues.code;
+          document.getElementById('f-type').value = originalValues.subject_type;
+          document.getElementById('f-credits').value = originalValues.credits;
+          document.getElementById('f-short_name').value = originalValues.short_name;
+          activeBox.checked = originalValues.is_active;
+          activeLabel.textContent = activeBox.checked ? 'Active' : 'Inactive';
+        }
+        setEditing(false);
+        document.getElementById('subjectSaveMsg').textContent = '';
+      });
+    }
+
+    if (activeBox) {
+      activeBox.addEventListener('change', () => {
+        activeLabel.textContent = activeBox.checked ? 'Active' : 'Inactive';
+      });
+    }
+
+    const saveSubjectBtn = document.getElementById('saveSubjectBtn');
+    if (saveSubjectBtn) {
+      saveSubjectBtn.addEventListener('click', async () => {
+        const msg = document.getElementById('subjectSaveMsg');
+        const payload = {
+          name: document.getElementById('f-name').value,
+          code: document.getElementById('f-code').value,
+          subject_type: document.getElementById('f-type').value,
+          credits: parseInt(document.getElementById('f-credits').value, 10),
+          short_name: document.getElementById('f-short_name').value,
+          is_active: activeBox.checked,
+        };
+
+        saveSubjectBtn.disabled = true;
+        msg.textContent = 'Saving…';
+
+        try {
+          const res = await fetch("{% url 'update-subject' subject.id %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            msg.textContent = 'Saved.';
+            setEditing(false);
+          } else {
+            msg.textContent = data.detail || (data.code ? data.code[0] : 'Could not save — check the fields.');
+            console.error(data);
+          }
+        } catch (e) {
+          msg.textContent = 'Network error while saving.';
+        } finally {
+          saveSubjectBtn.disabled = false;
+        }
+      });
+    }
+
+    // ---------- Per-row teacher assignment: lock-until-edit ----------
+    document.querySelectorAll('tr[data-mapping-id]').forEach((row) => {
+      const mappingId = row.dataset.mappingId;
+      const teacherSelect = row.querySelector('.mapping-teacher-select');
+      const yearSelect = row.querySelector('.mapping-year-select');
+      const semesterSelect = row.querySelector('.mapping-semester-select');
+      const editBtn = row.querySelector('.row-edit-btn');
+      const saveBtn = row.querySelector('.row-save-btn');
+      const cancelBtn = row.querySelector('.row-cancel-btn');
+      const msgEl = row.querySelector('.row-msg');
+      if (!editBtn) return; // view-only row
+
+      let original = {};
+
+      editBtn.addEventListener('click', () => {
+        original = {
+          teacher: teacherSelect.value,
+          year: yearSelect.value,
+          semester: semesterSelect.value,
+        };
+        teacherSelect.disabled = false;
+        yearSelect.disabled = false;
+        semesterSelect.disabled = false;
+        editBtn.style.display = 'none';
+        saveBtn.style.display = 'inline';
+        cancelBtn.style.display = 'inline';
+        msgEl.textContent = '';
+      });
+
+      cancelBtn.addEventListener('click', () => {
+        teacherSelect.value = original.teacher;
+        yearSelect.value = original.year;
+        semesterSelect.value = original.semester;
+        teacherSelect.disabled = true;
+        yearSelect.disabled = true;
+        semesterSelect.disabled = true;
+        editBtn.style.display = 'inline';
+        saveBtn.style.display = 'none';
+        cancelBtn.style.display = 'none';
+        msgEl.textContent = '';
+      });
+
+      saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        msgEl.textContent = 'Saving…';
+        try {
+          const res = await fetch(`{% url 'update-subject-mapping-teacher' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', mappingId),
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+              body: JSON.stringify({ teacher: teacherSelect.value || null ,year: yearSelect.value,semester: semesterSelect.value,}),
+            });
+          const data = await res.json();
+          if (res.ok) {
+            msgEl.textContent = 'Saved.';
+            teacherSelect.disabled = true;
+            yearSelect.disabled = true;
+            semesterSelect.disabled = true;
+            editBtn.style.display = 'inline';
+            saveBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
+          } else {
+            msgEl.textContent = data.detail || 'Could not save.';
+            console.error(data);
+          }
+        } catch (e) {
+          msgEl.textContent = 'Network error.';
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

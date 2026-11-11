@@ -1,0 +1,342 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Build Timetable{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'classroom-timetable' %}{% if classroom %}?classroom={{ classroom.id }}{% endif %}" class="crumb-link">Timetable</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">Build Timetable</span>
+{% endblock %}
+
+{% block main_content %}
+<style>
+  .grid-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .grid-controls form { display: contents; }
+  .grid-pill {
+    background: #e2e2e2;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 18px;
+  }
+  .grid-pill label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    margin-bottom: 4px;
+  }
+  .grid-pill select,
+  .grid-pill input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-900);
+    cursor: pointer;
+  }
+  .readonly-banner {
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    font-size: 13px;
+    color: var(--ink-900);
+  }
+  .grid-table-wrap {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: auto;
+  }
+  table.tt-grid {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 900px;
+  }
+  table.tt-grid th, table.tt-grid td {
+    border: 1px solid var(--line);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.tt-grid thead th {
+    background: var(--cream);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-900);
+    white-space: nowrap;
+  }
+  table.tt-grid thead .period-time {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  table.tt-grid thead .period-time input[type="time"] {
+    width: 74px;
+    font-size: 10.5px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 3px 4px;
+    background: var(--card);
+  }
+  table.tt-grid tbody th {
+    background: var(--card);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-900);
+    white-space: nowrap;
+  }
+  .cell-select {
+    width: 100%;
+    min-width: 170px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 8px;
+    font-size: 12.5px;
+    font-family: 'Inter', sans-serif;
+    background: var(--cream);
+    color: var(--ink-900);
+  }
+  .cell-select.is-filled {
+    background: var(--green-soft);
+    border-color: var(--secondary-light);
+    color: var(--secondary-light);
+    font-weight: 600;
+  }
+  .cell-select:disabled { opacity: .85; cursor: not-allowed; }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>Build Timetable</h1>
+    <div class="college-line">
+      {{ selected_academic_year.name }}{% if selected_academic_year.is_current %} (Current){% endif %}
+      &middot;
+      {% if classroom %}{{ classroom.department.name }} &middot; {{ classroom.get_year_display }} &middot; {{ classroom.get_semester_display }} &middot; {{ classroom.name }}{% if classroom.section %} (Sec {{ classroom.section }}){% endif %}{% else %}No classrooms found{% endif %}
+    </div>
+  </div>
+  <a href="{% url 'classroom-timetable' %}{% if classroom %}?classroom={{ classroom.id }}{% endif %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Timetable
+  </a>
+</div>
+
+{% if is_read_only %}
+<div class="readonly-banner">
+  {{ selected_academic_year.name }} is a past academic year, so its timetable is read-only. Switch to the current academic year to make changes.
+</div>
+{% endif %}
+
+<div class="grid-controls">
+  {# Academic Year Selector #}
+  <form method="get" action="{% url 'create-timetable-slot' %}">
+    <div class="grid-pill">
+      <label for="ctl-academic-year">Academic Year</label>
+      <select id="ctl-academic-year" name="academic_year" onchange="this.form.submit()">
+        {% for ay in academic_years %}
+        <option value="{{ ay.id }}" {% if ay.id == selected_academic_year.id %}selected{% endif %}>
+          {{ ay.name }}{% if ay.is_current %} (Current){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+
+  {# Classroom & Period Count Selector #}
+  <form method="get" action="{% url 'create-timetable-slot' %}" id="gridControlsForm">
+    <!-- Pass selected academic year so choosing a classroom preserves the year filter -->
+    <input type="hidden" name="academic_year" value="{{ selected_academic_year.id }}">
+
+    <div class="grid-pill">
+      <label for="ctl-classroom">Classroom</label>
+      <select id="ctl-classroom" name="classroom" onchange="this.form.submit()">
+        {% for c in classrooms %}
+        <option value="{{ c.id }}" {% if classroom and classroom.id == c.id %}selected{% endif %}>
+          {{ c.department.name }} &middot; {{ c.get_year_display }} &middot; {{ c.name }}{% if c.section %} (Sec {{ c.section }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="grid-pill">
+      <label for="ctl-period-count">Period Count</label>
+      <select id="ctl-period-count" name="period_count" onchange="this.form.submit()">
+        <option value="4"  {% if period_count == 4 %}selected{% endif %}>4</option>
+        <option value="5"  {% if period_count == 5 %}selected{% endif %}>5</option>
+        <option value="6"  {% if period_count == 6 %}selected{% endif %}>6</option>
+        <option value="7"  {% if period_count == 7 %}selected{% endif %}>7</option>
+        <option value="8"  {% if period_count == 8 %}selected{% endif %}>8</option>
+        <option value="9"  {% if period_count == 9 %}selected{% endif %}>9</option>
+        <option value="10" {% if period_count == 10 %}selected{% endif %}>10</option>
+        <option value="12" {% if period_count == 12 %}selected{% endif %}>12</option>
+      </select>
+    </div>
+  </form>
+</div>
+
+{% if not classroom %}
+<section class="panel"><div class="panel-body"><p class="empty-note">No classrooms exist for {{ selected_academic_year.name }}. Create a classroom first to build its timetable.</p></div></section>
+
+{% elif not subject_mappings %}
+<section class="panel"><div class="panel-body"><p class="empty-note">No subjects are mapped to {{ classroom.department.name }} for {{ classroom.get_year_display }} / {{ classroom.get_semester_display }} yet.</p></div></section>
+
+{% else %}
+<div class="grid-table-wrap">
+  <table class="tt-grid" id="ttGrid">
+    <thead>
+      <tr>
+        <th></th>
+        {% for col in period_columns %}
+        <th data-period="{{ col.period_number }}">
+          Period {{ col.period_number }}
+          <div class="period-time">
+            <input type="time" class="period-start" value="{{ col.start_time|time:'H:i' }}" {% if is_read_only %}disabled{% endif %}>
+            <input type="time" class="period-end" value="{{ col.end_time|time:'H:i' }}" {% if is_read_only %}disabled{% endif %}>
+          </div>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr data-day="{{ row.day_value }}">
+        <th>{{ row.day_label }}</th>
+        {% for cell in row.cells %}
+        <td data-period="{{ cell.period_number }}">
+          <select class="cell-select {% if cell.slot %}is-filled{% endif %}" {% if is_read_only %}disabled{% endif %}>
+            <option value="">— Not Scheduled —</option>
+            {% for m in subject_mappings %}
+            <option value="{{ m.id }}" {% if cell.slot and cell.slot.subject_mapping_id == m.id %}selected{% endif %}>
+              {{ m.subject.name }} ({{ m.subject.code }})
+            </option>
+            {% endfor %}
+          </select>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if not is_read_only %}
+<div class="form-actions">
+  <span id="gridSaveMsg" class="field-hint" style="margin:0;"></span>
+  <button type="button" id="saveGridBtn" class="btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    Save Timetable
+  </button>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    // Toggle the "filled" visual style whenever a cell's subject changes
+    document.querySelectorAll('.cell-select').forEach((select) => {
+      select.addEventListener('change', () => {
+        select.classList.toggle('is-filled', !!select.value);
+      });
+    });
+
+    function getCookie(name) {
+      const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? match.pop() : '';
+    }
+
+    // Turns DRF error shapes (string / list / {field: [..]}) into one readable line
+    function formatErrors(data) {
+      if (!data) return 'Could not save.';
+      if (typeof data === 'string') return data;
+      if (Array.isArray(data)) return data.map(formatErrors).join(' ');
+      if (data.detail) return data.detail;
+      return Object.entries(data)
+        .map(([k, v]) => (k === 'non_field_errors' ? '' : k.replace(/_/g, ' ') + ': ') + formatErrors(v))
+        .join(' ');
+    }
+
+    const saveBtn = document.getElementById('saveGridBtn');
+    if (!saveBtn) return;  // read-only year: no save button
+
+    saveBtn.addEventListener('click', async () => {
+      const msg = document.getElementById('gridSaveMsg');
+
+      // Period time lookup, keyed by period number
+      const periodTimes = {};
+      document.querySelectorAll('#ttGrid thead th[data-period]').forEach((th) => {
+        periodTimes[th.dataset.period] = {
+          start: th.querySelector('.period-start').value,
+          end: th.querySelector('.period-end').value,
+        };
+      });
+
+      const cells = [];
+      let missingTime = false;
+      document.querySelectorAll('#ttGrid tbody tr[data-day]').forEach((row) => {
+        const dayOfWeek = row.dataset.day;
+        row.querySelectorAll('td[data-period]').forEach((td) => {
+          const period = td.dataset.period;
+          const select = td.querySelector('.cell-select');
+          if (!select.value) return;
+          const t = periodTimes[period];
+          if (!t.start || !t.end) missingTime = true;
+          cells.push({
+            subject_mapping: select.value,
+            day_of_week: parseInt(dayOfWeek, 10),
+            period_number: parseInt(period, 10),
+            start_time: t.start,
+            end_time: t.end,
+          });
+        });
+      });
+
+      if (missingTime) {
+        msg.textContent = 'Set a start and end time for every period that has a subject.';
+        return;
+      }
+
+      saveBtn.disabled = true;
+      msg.textContent = 'Saving…';
+
+      try {
+        const res = await fetch("{% url 'save-timetable-grid' %}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+          },
+          body: JSON.stringify({
+            classroom: "{{ classroom.id }}",
+            cells: cells,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          msg.textContent = `Saved · ${data.slots_saved} period${data.slots_saved === 1 ? '' : 's'} scheduled.`;
+        } else {
+          msg.textContent = formatErrors(data);
+          console.error(data);
+        }
+      } catch (e) {
+        msg.textContent = 'Network error while saving.';
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+  })();
+</script>
+{% endblock %}

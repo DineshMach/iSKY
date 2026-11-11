@@ -1,0 +1,519 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · {{ classroom.name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'college-classrooms' %}?academic_year={{ classroom.academic_year_id }}" class="crumb-link">Classrooms</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">{{ classroom.name }}</span>
+{% endblock %}
+
+{% block main_content %}
+<style>
+  .profile-head { display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-bottom:18px; }
+  .profile-head .p-name { font-size:19px; font-weight:700; color:var(--ink-900); }
+  .profile-head .p-meta { font-size:13px; color:var(--ink-500); margin-top:2px; }
+
+  .edit-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+  .edit-field label { display:block; font-size:12px; font-weight:700; letter-spacing:.02em; color:var(--ink-500); margin-bottom:6px; text-transform:uppercase; }
+  .edit-field input[type="text"], .edit-field select { width:100%; border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:14px; font-family:'Inter',sans-serif; background:var(--cream); color:var(--ink-900); }
+  .edit-field input:focus, .edit-field select:focus { outline:none; border-color:var(--secondary-light); box-shadow:0 0 0 3px rgba(10,107,102,.12); }
+  .edit-field input:disabled, .edit-field select:disabled { background:var(--card); color:var(--ink-500); cursor:not-allowed; }
+  .toggle-row { display:flex; align-items:center; gap:10px; padding-top:8px; }
+  .toggle-row input:disabled { cursor:not-allowed; opacity:.5; }
+  .panel-head-actions { display:flex; align-items:center; gap:10px; }
+  #editModeBanner { font-size:12px; font-weight:600; color:var(--secondary-light); display:none; }
+
+  .mapping-teacher-select { width:100%; min-width:200px; padding:7px 8px; border:1px solid var(--line); border-radius:8px; font-size:12.5px; font-family:'Inter',sans-serif; background:var(--cream); color:var(--ink-900); }
+  .mapping-teacher-select:disabled { background:var(--card); color:var(--ink-500); cursor:not-allowed; }
+  .row-edit-btn, .row-save-btn, .row-cancel-btn, .row-clear-btn { border:none; background:none; font-size:12px; font-weight:700; cursor:pointer; padding:4px 6px; }
+  .row-edit-btn { color:var(--secondary-light); }
+  .row-save-btn { color:#0a6b66; }
+  .row-cancel-btn { color:var(--ink-500); }
+  .row-clear-btn { color:#b42318; }
+  .row-msg { font-size:11px; color:var(--ink-500); margin-left:6px; }
+
+  .stat-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:8px; margin-bottom:12px; }
+  .stat-box { border:1px solid var(--line); border-radius:8px; padding:7px 10px; background:var(--cream); }
+  .stat-box .n { font-size:17px; font-weight:700; color:var(--ink-900); line-height:1.2; }
+  .stat-box .l { font-size:11px; color:var(--ink-500); margin-top:1px; }
+
+  .overview-grid { display:grid; grid-template-columns:1fr 1fr 2fr; gap:10px; width:100%; margin-bottom:14px; }
+  @media (max-width:640px) { .overview-grid { grid-template-columns:1fr 1fr; } .overview-grid .att-widget { grid-column:1 / -1; } }
+  .overview-grid .stat-box { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:6px 14px; min-height:0; width:100%; border-radius:8px; }
+  .overview-grid .stat-box .n { font-size:17px; line-height:1.2; }
+  .overview-grid .stat-box .l { font-size:11.5px; margin:0; color:var(--ink-700, var(--ink-500)); font-weight:600; }
+  .tone-students { background:#e4f1ef; border:1px solid #c5e0dc; }
+  .tone-staff { background:#e6edfa; border:1px solid #cbd9f3; }
+  .tone-attendance { background:#eef5e6; border:1px solid #d5e5c4; }
+  .att-nums { display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; }
+  .att-nums .n { font-size:15px; }
+  .att-present { color:#0a6b66; }
+  .att-absent { color:#b42318; }
+  .att-bar { flex-basis:100%; height:3px; border-radius:999px; background:#f3c9c4; overflow:hidden; margin:0 0 2px; }
+  .att-bar span { display:block; height:100%; background:#0a6b66; }
+  .tt-table { table-layout:fixed; width:100%; min-width:680px; border-collapse:collapse; }
+  .tt-table th, .tt-table td { text-align:center; vertical-align:middle; padding:8px 6px; height:58px; overflow:hidden; word-break:break-word; border:1px solid var(--line); }
+  .tt-table th { height:46px; background:var(--cream); }
+  .tt-table th:first-child, .tt-table td:first-child { width:84px; }
+  .tt-subject { font-weight:600; color:var(--ink-900); font-size:12.5px; line-height:1.25; }
+  .tt-time { font-size:10.5px; color:var(--ink-500); font-weight:400; margin-top:2px; line-height:1.2; }
+  .tt-today td { background:rgba(10,107,102,.06); }
+  .fee-tag { display:inline-block; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; }
+  .fee-paid, .fee-waived { background:#e3f4ee; color:#0a6b66; }
+  .fee-partial { background:#fff4d6; color:#8a5a00; }
+  .fee-pending, .fee-no_invoice { background:#eceff1; color:#5b6670; }
+  .fee-overdue { background:#fde7e5; color:#b42318; }
+  .note-line { font-size:12px; color:var(--ink-500); margin:10px 0 0; }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>Classroom</h1>
+    <div class="college-line">
+      {{ classroom.academic_year.name }} &middot;
+      {% if can_manage %}Manage details, staff and subjects{% else %}View only{% endif %}
+    </div>
+  </div>
+  <div class="panel-head-actions">
+    {% if classroom.is_active %}
+    <a href="{% url 'classroom-take-attendance' %}?classroom={{ classroom.id }}" class="btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Take attendance
+    </a>
+    {% endif %}
+    <a href="{% url 'college-classrooms' %}?academic_year={{ classroom.academic_year_id }}" class="btn-ghost">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back to Classrooms
+    </a>
+  </div>
+</div>
+
+<!-- ---------- Header ---------- -->
+<div class="profile-head">
+  <div class="dir-avatar">{{ classroom.department.short_name|slice:":2"|upper }}</div>
+  <div>
+    <div class="p-name" id="headName">{{ classroom.name }}</div>
+    <div class="p-meta">{{ classroom.department.name }} &middot; {{ classroom.get_year_display }} &middot; {{ classroom.get_semester_display }}</div>
+  </div>
+  <span id="headPill" class="pill {% if classroom.is_active %}active{% else %}blocked{% endif %}" style="margin-left:auto;">
+    {% if classroom.is_active %}Active{% else %}Closed{% endif %}
+  </span>
+</div>
+
+<!-- ---------- Overview: counts + today's attendance ---------- -->
+<div class="overview-grid">
+  <div class="stat-box tone-students"><span class="l">Total students</span><span class="n">{{ student_count }}</span></div>
+  <div class="stat-box tone-staff"><span class="l">Staff</span><span class="n">{{ staff_count }}</span></div>
+
+  <div class="stat-box tone-attendance att-widget">
+    <span class="l">Today &middot; {{ attendance_today.date|date:"d M" }}{% if attendance_today.has_data %} &middot; {{ attendance_today.periods_taken }} period{{ attendance_today.periods_taken|pluralize }}{% endif %}</span>
+    {% if attendance_today.has_data %}
+    <span class="att-nums">
+      <span><span class="n att-present">{{ attendance_today.present }}</span> <span class="l">Present</span></span>
+      <span><span class="n att-absent">{{ attendance_today.absent }}</span> <span class="l">Absent</span></span>
+      {% if attendance_today.not_marked %}<span><span class="n">{{ attendance_today.not_marked }}</span> <span class="l">Not marked</span></span>{% endif %}
+    </span>
+    <div class="att-bar" title="{{ attendance_today.percent }}% present"><span style="width:{{ attendance_today.percent }}%;"></span></div>
+    {% else %}
+    <span class="l" style="font-weight:500;">Attendance not taken yet</span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ---------- Classroom details ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>Classroom Details</h2>
+    <div class="panel-head-actions">
+      <span id="editModeBanner">Editing — remember to save</span>
+      <span id="classSaveMsg" class="field-hint" style="margin:0;"></span>
+      {% if can_manage %}
+      <button type="button" id="editToggleBtn" class="btn-ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Edit
+      </button>
+      {% endif %}
+    </div>
+  </div>
+  <div class="panel-body">
+    <div class="edit-grid">
+      <div class="edit-field">
+        <label for="f-name">Classroom Name</label>
+        <input type="text" id="f-name" value="{{ classroom.name }}" disabled>
+      </div>
+      <div class="edit-field">
+        <label for="f-section">Section</label>
+        <input type="text" id="f-section" value="{{ classroom.section }}" disabled>
+      </div>
+      <div class="edit-field">
+        <label for="f-room">Room Number</label>
+        <input type="text" id="f-room" value="{{ classroom.room_number|default:'' }}" disabled>
+      </div>
+      <div class="edit-field">
+        <label>Department</label>
+        <input type="text" value="{{ classroom.department.name }}" disabled>
+      </div>
+      <div class="edit-field">
+        <label>Year / Semester</label>
+        <input type="text" value="{{ classroom.get_year_display }} · {{ classroom.get_semester_display }}" disabled>
+      </div>
+      <div class="edit-field">
+        <label>Active Status</label>
+        <div class="toggle-row">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink-900);cursor:pointer;">
+            <input type="checkbox" id="f-active" {% if classroom.is_active %}checked{% endif %} disabled style="width:16px;height:16px;">
+            <span id="activeLabel">{% if classroom.is_active %}Active{% else %}Closed{% endif %}</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    {% if can_manage %}
+    <div class="form-actions" id="saveRow" style="display:none;">
+      <button type="button" id="cancelEditBtn" class="btn-ghost">Cancel</button>
+      <button type="button" id="saveClassBtn" class="btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Save Changes
+      </button>
+    </div>
+    <p class="note-line">Year and semester are fixed because student enrollments are tied to them.</p>
+    {% else %}
+    <p class="empty-note" style="margin-top:14px;">Only the Office Admin, Principal or the department HOD can edit a classroom, and only in the current academic year.</p>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ---------- Timetable ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head"><h2>Timetable</h2>
+    <span class="field-hint" style="margin:0;">Weekly schedule</span>
+  </div>
+  <div class="panel-body table-wrap">
+    {% if timetable.has_slots %}
+    <table class="simple-table tt-table">
+      <thead>
+        <tr>
+          <th>Day</th>
+          {% for p in timetable.periods %}
+          <th>Period {{ p.number }}<div class="tt-time">{{ p.start|time:"H:i" }}–{{ p.end|time:"H:i" }}</div></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in timetable.rows %}
+        <tr {% if row.is_today %}class="tt-today"{% endif %}>
+          <td><strong>{{ row.day }}</strong>{% if row.is_today %}<div class="tt-time">Today</div>{% endif %}</td>
+          {% for c in row.cells %}
+          <td>
+            {% if c %}
+            <div class="tt-subject" title="{{ c.subject_full }}">{{ c.subject_full }}</div>
+            {% if c.teacher %}<div class="tt-time">{{ c.teacher }}</div>{% endif %}
+            {% else %}<span class="tt-time">—</span>{% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-note">No timetable has been set up for this classroom yet.</p>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ---------- Subjects + teacher assign / de-assign ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head"><h2>Subjects &amp; Teachers</h2>
+    <span class="field-hint" style="margin:0;">{{ subject_rows|length }} subject{{ subject_rows|length|pluralize }}</span>
+  </div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead>
+        <tr><th>Code</th><th>Subject</th><th>Type</th><th>Credits</th><th>Teacher</th><th style="width:190px;"></th></tr>
+      </thead>
+      <tbody>
+        {% for m in subject_rows %}
+        <tr data-mapping-id="{{ m.id }}">
+          <td><span class="dir-id">{{ m.subject.code }}</span></td>
+          <td>{{ m.subject.name }}</td>
+          <td>{{ m.subject.get_subject_type_display }}</td>
+          <td>{{ m.subject.credits }}</td>
+          <td>
+            <select class="mapping-teacher-select" disabled>
+              <option value="">Unassigned</option>
+              {% for staff in staff_members %}
+              <option value="{{ staff.id }}" {% if m.teacher_id == staff.id %}selected{% endif %}>
+                {{ staff.college_user.user.get_full_name|default:staff.college_user.user.username }}{% if staff.department %} · {{ staff.department.short_name|default:staff.department.name }}{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </td>
+          <td>
+            {% if can_assign %}
+            <button type="button" class="row-edit-btn">Assign</button>
+            <button type="button" class="row-save-btn" style="display:none;">Save</button>
+            <button type="button" class="row-cancel-btn" style="display:none;">Cancel</button>
+            <button type="button" class="row-clear-btn" {% if not m.teacher_id %}style="display:none;"{% endif %}>De-assign</button>
+            <span class="row-msg"></span>
+            {% else %}
+            <span class="field-hint" style="margin:0;">View only</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><p class="empty-note">No subjects are mapped to {{ classroom.department.short_name }} · {{ classroom.get_year_display }} · {{ classroom.get_semester_display }} yet.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if can_assign %}
+    <p class="note-line">The teacher is set for the department, year and semester, so it applies to every section of this subject. This classroom's timetable periods are updated too.</p>
+    {% elif can_manage %}
+    <p class="note-line">This classroom is closed. Reactivate it to change teacher assignments.</p>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ---------- Staff ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head"><h2>Staff</h2>
+    <span class="field-hint" style="margin:0;">{{ staff_rows|length }} member{{ staff_rows|length|pluralize }}</span>
+  </div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead><tr><th>Name</th><th>Role</th><th>Subjects taught here</th></tr></thead>
+      <tbody>
+        {% for s in staff_rows %}
+        <tr>
+          <td>{{ s.name }}</td>
+          <td>{{ s.role }}</td>
+          <td>{% if s.subjects %}{{ s.subjects|join:", " }}{% else %}—{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3"><p class="empty-note">No staff are linked to this classroom yet.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ---------- Students ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head"><h2>Students</h2>
+    <span class="field-hint" style="margin:0;">{{ student_rows|length }} student{{ student_rows|length|pluralize }}</span>
+  </div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead><tr><th>#</th><th>Name</th><th>Admission No.</th><th>Roll No.</th><th>Hostel</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for s in student_rows %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ s.name }}</td>
+          <td><span class="dir-id">{{ s.admission_number }}</span></td>
+          <td>{{ s.roll_number|default:"—" }}</td>
+          <td>{% if s.is_hostellar %}Hosteller{% else %}Day scholar{% endif %}</td>
+          <td>{{ s.status }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><p class="empty-note">No students are enrolled in this classroom yet.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ---------- Fee payments: class advisor only ---------- -->
+{% if is_advisor and fee_summary %}
+<section class="panel">
+  <div class="panel-head"><h2>Fee Payments</h2>
+    <span class="field-hint" style="margin:0;">{{ classroom.academic_year.name }} · {{ classroom.get_semester_display }} · visible to you as class advisor</span>
+  </div>
+  <div class="panel-body">
+    <div class="stat-strip">
+      <div class="stat-box"><div class="n">{{ fee_summary.fully_paid }} / {{ fee_summary.total }}</div><div class="l">Fully paid</div></div>
+      <div class="stat-box"><div class="n">{{ fee_summary.counts.partial }}</div><div class="l">Partially paid</div></div>
+      <div class="stat-box"><div class="n">{{ fee_summary.counts.pending }}</div><div class="l">Pending</div></div>
+      <div class="stat-box"><div class="n">{{ fee_summary.counts.overdue }}</div><div class="l">Overdue</div></div>
+      <div class="stat-box"><div class="n">{{ fee_summary.counts.no_invoice }}</div><div class="l">No invoice</div></div>
+    </div>
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead><tr><th>Name</th><th>Admission No.</th><th>Payable</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for r in fee_summary.rows %}
+          <tr>
+            <td>{{ r.name }}</td>
+            <td><span class="dir-id">{{ r.admission_number }}</span></td>
+            <td>₹{{ r.net }}</td>
+            <td>₹{{ r.paid }}</td>
+            <td>₹{{ r.balance }}</td>
+            <td><span class="fee-tag fee-{{ r.status }}">{{ r.label }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6"><p class="empty-note">No students to show.</p></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    function getCookie(name) {
+      const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? match.pop() : '';
+    }
+    async function postJSON(url, body) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify(body),
+      });
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      return { ok: res.ok, data };
+    }
+
+    // ---------- Classroom details: lock-until-edit ----------
+    const ids = ['f-name', 'f-section', 'f-room', 'f-active'];
+    const fields = ids.map((id) => document.getElementById(id));
+    const editBtn = document.getElementById('editToggleBtn');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    const saveBtn = document.getElementById('saveClassBtn');
+    const saveRow = document.getElementById('saveRow');
+    const banner = document.getElementById('editModeBanner');
+    const msg = document.getElementById('classSaveMsg');
+    const activeBox = document.getElementById('f-active');
+    const activeLabel = document.getElementById('activeLabel');
+    const headPill = document.getElementById('headPill');
+    const headName = document.getElementById('headName');
+
+    let original = null;
+    function setEditing(on) {
+      fields.forEach((el) => { if (el) el.disabled = !on; });
+      if (saveRow) saveRow.style.display = on ? 'flex' : 'none';
+      if (banner) banner.style.display = on ? 'inline' : 'none';
+      if (editBtn) editBtn.style.display = on ? 'none' : 'inline-flex';
+    }
+    function paintStatus() {
+      const on = activeBox.checked;
+      activeLabel.textContent = on ? 'Active' : 'Closed';
+      headPill.textContent = on ? 'Active' : 'Closed';
+      headPill.className = 'pill ' + (on ? 'active' : 'blocked');
+    }
+
+    if (editBtn) editBtn.addEventListener('click', () => {
+      original = {
+        name: fields[0].value, section: fields[1].value,
+        room: fields[2].value, active: activeBox.checked,
+      };
+      setEditing(true);
+    });
+
+    if (cancelBtn) cancelBtn.addEventListener('click', () => {
+      if (original) {
+        fields[0].value = original.name; fields[1].value = original.section;
+        fields[2].value = original.room; activeBox.checked = original.active;
+        paintStatus();
+      }
+      setEditing(false);
+      msg.textContent = '';
+    });
+
+    if (activeBox) activeBox.addEventListener('change', () => {
+      activeLabel.textContent = activeBox.checked ? 'Active' : 'Closed';
+    });
+
+    if (saveBtn) saveBtn.addEventListener('click', async () => {
+      saveBtn.disabled = true;
+      msg.textContent = 'Saving…';
+      try {
+        const { ok, data } = await postJSON("{% url 'update-classroom' classroom.id %}", {
+          name: fields[0].value,
+          section: fields[1].value,
+          room_number: fields[2].value,
+          is_active: activeBox.checked,
+        });
+        if (ok) {
+          msg.textContent = 'Saved.';
+          headName.textContent = data.classroom.name;
+          paintStatus();
+          setEditing(false);
+          // Assign controls depend on active status, so reload when it changed.
+          if (original && original.active !== data.classroom.is_active) window.location.reload();
+        } else {
+          msg.textContent = data.detail || 'Could not save — check the fields.';
+        }
+      } catch (e) {
+        msg.textContent = 'Network error while saving.';
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    // ---------- Subject teacher assign / de-assign ----------
+    const assignUrlTemplate = "{% url 'assign-classroom-subject-teacher' classroom.id '00000000-0000-0000-0000-000000000000' %}";
+
+    document.querySelectorAll('tr[data-mapping-id]').forEach((row) => {
+      const url = assignUrlTemplate.replace('00000000-0000-0000-0000-000000000000', row.dataset.mappingId);
+      const select = row.querySelector('.mapping-teacher-select');
+      const edit = row.querySelector('.row-edit-btn');
+      const save = row.querySelector('.row-save-btn');
+      const cancel = row.querySelector('.row-cancel-btn');
+      const clear = row.querySelector('.row-clear-btn');
+      const rowMsg = row.querySelector('.row-msg');
+      if (!edit) return; // view-only
+
+      let before = '';
+      function lock() {
+        select.disabled = true;
+        edit.style.display = 'inline';
+        save.style.display = 'none';
+        cancel.style.display = 'none';
+        clear.style.display = select.value ? 'inline' : 'none';
+      }
+      async function send(teacherId, btn) {
+        btn.disabled = true;
+        rowMsg.textContent = 'Saving…';
+        try {
+          const { ok, data } = await postJSON(url, { teacher: teacherId || null });
+          if (ok) {
+            select.value = data.teacher_id || '';
+            rowMsg.textContent = data.message;
+            lock();
+          } else {
+            rowMsg.textContent = data.detail || 'Could not save.';
+          }
+        } catch (e) {
+          rowMsg.textContent = 'Network error.';
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      edit.addEventListener('click', () => {
+        before = select.value;
+        select.disabled = false;
+        edit.style.display = 'none';
+        clear.style.display = 'none';
+        save.style.display = 'inline';
+        cancel.style.display = 'inline';
+        rowMsg.textContent = '';
+      });
+      cancel.addEventListener('click', () => { select.value = before; lock(); rowMsg.textContent = ''; });
+      save.addEventListener('click', () => send(select.value, save));
+      clear.addEventListener('click', () => {
+        if (confirm('Remove the assigned teacher from this subject?')) send('', clear);
+      });
+    });
+  })();
+</script>
+{% endblock %}

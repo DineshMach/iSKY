@@ -1,0 +1,475 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · {{ staff.college_user.user.first_name }} {{ staff.college_user.user.last_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'master-admin-dashboard' %}" class="crumb-link">Home</a>
+<span class="crumb-sep">/</span>
+<a href="{% url 'college-staff' %}" class="crumb-link">Staff</a>
+<span class="crumb-sep">/</span>
+<span class="crumb-current">{{ staff.college_user.user.first_name }} {{ staff.college_user.user.last_name }}</span>
+{% endblock %}
+
+{% block main_content %}
+<style>
+  .profile-head {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 18px;
+  }
+  .profile-head .p-name { font-size: 19px; font-weight: 700; color: var(--ink-900); }
+  .profile-head .p-meta { font-size: 13px; color: var(--ink-500); margin-top: 2px; }
+
+  .edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .edit-field label {
+    display: block; font-size: 12px; font-weight: 700; letter-spacing: .02em;
+    color: var(--ink-500); margin-bottom: 6px; text-transform: uppercase;
+  }
+  .edit-field input[type="text"],
+  .edit-field input[type="email"],
+  .edit-field select,
+  .edit-field textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; font-size: 14px; font-family: 'Inter', sans-serif;
+    background: var(--cream); color: var(--ink-900);
+  }
+  .edit-field textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+  .edit-field input:focus, .edit-field select:focus, .edit-field textarea:focus {
+    outline: none; border-color: var(--secondary-light);
+    box-shadow: 0 0 0 3px rgba(10, 107, 102, .12);
+  }
+  .edit-field input:disabled, .edit-field select:disabled, .edit-field textarea:disabled {
+    background: var(--card); color: var(--ink-500); cursor: not-allowed;
+  }
+  .col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+  @media (max-width: 640px) {
+    .col-span-2 { grid-column: span 1 / span 1; }
+  }
+
+  /* Send-password option under the email field */
+  .send-password-row {
+    display: none;
+    align-items: flex-start; gap: 8px;
+    margin-top: 8px; padding: 9px 12px;
+    border: 1px dashed var(--line); border-radius: 8px;
+    background: var(--card);
+    font-size: 12.5px; font-weight: 500; color: var(--ink-900);
+    text-transform: none; letter-spacing: 0; cursor: pointer;
+  }
+  .edit-field label.send-password-row { display: none; margin-bottom: 0; text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 500; color: var(--ink-900); }
+  .edit-field label.send-password-row.is-visible { display: flex; }
+  .send-password-row input[type="checkbox"] { width: 16px; height: 16px; margin-top: 1px; flex-shrink: 0; }
+  .send-password-row small { display: block; color: var(--ink-500); font-size: 11.5px; font-weight: 400; margin-top: 2px; }
+
+  .panel-head-actions { display: flex; align-items: center; gap: 10px; }
+  #detailsEditBanner, #subjectsEditBanner { font-size: 12px; font-weight: 600; color: var(--secondary-light); display: none; }
+
+  .subject-check-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 4px 2px;
+  }
+  .subject-check-row {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 12px; background: var(--card);
+  }
+  .subject-check-row input[type="checkbox"] { width: 16px; height: 16px; flex-shrink: 0; }
+  .subject-check-row input[type="checkbox"]:disabled { cursor: not-allowed; opacity: .5; }
+  .subject-check-row .sc-label { font-size: 13px; color: var(--ink-900); }
+  .subject-check-row .sc-sub { font-size: 11.5px; color: var(--ink-500); }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>Staff Profile</h1>
+    <div class="college-line">Details, role, and subjects taught</div>
+  </div>
+  <a href="{% url 'college-staff' %}" class="btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Staff
+  </a>
+</div>
+
+<!-- ---------- Header ---------- -->
+<div class="profile-head">
+  <div class="dir-avatar">{{ staff.college_user.user.first_name|slice:":2"|upper }}</div>
+  <div>
+    <div class="p-name">{{ staff.college_user.user.first_name }} {{ staff.college_user.user.last_name }}</div>
+    <div class="p-meta">{{ staff.college_user.user.email }} &middot; {{ staff.get_staff_role_display }}{% if staff.department %} &middot; {{ staff.department.name }}{% endif %}</div>
+  </div>
+  <span class="pill {{ staff.college_user.status|default:'active' }}" style="margin-left:auto;">{{ staff.college_user.get_status_display }}</span>
+</div>
+
+<!-- ---------- Editable staff details ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>Staff Details</h2>
+    <div class="panel-head-actions">
+      <span id="detailsEditBanner">Editing — remember to save</span>
+      <span id="detailsSaveMsg" class="field-hint" style="margin:0;"></span>
+      {% if can_edit %}
+      <button type="button" id="detailsEditToggleBtn" class="btn-ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Edit
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="panel-body">
+    <form id="staffForm">
+      <div class="edit-grid">
+        <div class="edit-field">
+          <label for="f-first">First Name</label>
+          <input type="text" id="f-first" name="first_name" value="{{ staff.college_user.user.first_name }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-last">Last Name</label>
+          <input type="text" id="f-last" name="last_name" value="{{ staff.college_user.user.last_name }}" disabled>
+        </div>
+
+        <!-- Email + send new password option -->
+        <div class="edit-field">
+          <label for="f-email">Email</label>
+          <input type="email" id="f-email" name="email" value="{{ staff.college_user.user.email }}" disabled>
+
+          <label id="sendPasswordRow" class="send-password-row" for="f-send-password">
+            <input type="checkbox" id="f-send-password" name="send_password" disabled>
+            <span>
+              Send a new random password to this email
+              <small>Ticked automatically when you change the email. The old password stops working.</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="edit-field">
+          <label for="f-mobile">Mobile Number</label>
+          <input type="text" id="f-mobile" name="mobile_number" value="{{ staff.college_user.user.mobile_number|default:'' }}" disabled>
+        </div>
+        <div class="edit-field">
+          <label for="f-department">Department</label>
+          <select id="f-department" name="department" disabled>
+            <option value="">— None —</option>
+            {% for dept in departments %}
+            <option value="{{ dept.id }}" {% if staff.department_id == dept.id %}selected{% endif %}>{{ dept.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="edit-field">
+          <label for="f-role">Position</label>
+          <select id="f-role" name="staff_role" disabled>
+            {% for value, label in staff_role_choices %}
+            <option value="{{ value }}" {% if staff.staff_role == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="edit-field" id="advisorYearField" style="display:{% if staff.staff_role == 'class_advisor' %}block{% else %}none{% endif %};">
+          <label for="f-advisor-year">Advisor For Year</label>
+          <select id="f-advisor-year" name="advisor_year" disabled>
+            <option value="">— Select year —</option>
+            {% for value, label in year_choices %}
+            <option value="{{ value }}" {% if staff.advisor_year == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="edit-field">
+          <label for="f-designation">Designation</label>
+          <input type="text" id="f-designation" name="designation" value="{{ staff.designation }}" disabled>
+        </div>
+
+        <!-- Blood Group Field (stored on CollegeUser) -->
+        <div class="edit-field">
+          <label for="f-blood-group">Blood Group</label>
+          <select id="f-blood-group" name="blood_group" disabled>
+            <option value="" {% if not staff.college_user.blood_group %}selected{% endif %}>— Select Blood Group —</option>
+            <option value="A+" {% if staff.college_user.blood_group == "A+" %}selected{% endif %}>A+</option>
+            <option value="A-" {% if staff.college_user.blood_group == "A-" %}selected{% endif %}>A-</option>
+            <option value="B+" {% if staff.college_user.blood_group == "B+" %}selected{% endif %}>B+</option>
+            <option value="B-" {% if staff.college_user.blood_group == "B-" %}selected{% endif %}>B-</option>
+            <option value="O+" {% if staff.college_user.blood_group == "O+" %}selected{% endif %}>O+</option>
+            <option value="O-" {% if staff.college_user.blood_group == "O-" %}selected{% endif %}>O-</option>
+            <option value="AB+" {% if staff.college_user.blood_group == "AB+" %}selected{% endif %}>AB+</option>
+            <option value="AB-" {% if staff.college_user.blood_group == "AB-" %}selected{% endif %}>AB-</option>
+          </select>
+        </div>
+
+        <div class="edit-field">
+          <label for="f-status">Status</label>
+          <select id="f-status" name="status" disabled>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if staff.college_user.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Address Field (stored on CollegeUser) -->
+        <div class="edit-field col-span-2">
+          <label for="f-address">Address</label>
+          <textarea id="f-address" name="address" placeholder="e.g. 123 Street Name, City, State, PIN" disabled>{{ staff.college_user.address|default:'' }}</textarea>
+        </div>
+      </div>
+
+      {% if can_edit %}
+      <div class="form-actions" id="detailsSaveRow" style="display:none; margin-top:16px;">
+        <button type="button" id="detailsCancelBtn" class="btn-ghost">Cancel</button>
+        <button type="button" id="detailsSaveBtn" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Save Changes
+        </button>
+      </div>
+      {% else %}
+      <p class="empty-note" style="margin-top:14px;">Only Master Admin or Office Admin can edit staff details.</p>
+      {% endif %}
+    </form>
+    {% if can_edit %}
+    <p class="field-hint" style="margin-top:10px;">If you change department here, save first, then reload this page to manage subjects for the new department.</p>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ---------- Subjects taught ---------- -->
+<section class="panel">
+  <div class="panel-head">
+    <h2>Subjects Taught</h2>
+    <div class="panel-head-actions">
+      <span id="subjectsEditBanner">Editing — untick a subject to remove it, then save</span>
+      <span id="subjectsSaveMsg" class="field-hint" style="margin:0;"></span>
+      {% if can_edit and assigned_mappings %}
+      <button type="button" id="subjectsEditToggleBtn" class="btn-ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Edit
+      </button>
+      {% endif %}
+    </div>
+  </div>
+  <div class="panel-body">
+    <div class="subject-check-list" id="subjectCheckList">
+      {% for m in assigned_mappings %}
+      <label class="subject-check-row">
+        <input type="checkbox" value="{{ m.id }}" checked disabled>
+        <span>
+          <div class="sc-label">{{ m.subject.name }} ({{ m.subject.code }})</div>
+          <div class="sc-sub">{{ m.department.short_name|default:m.department.name }} &middot; {{ m.get_year_display }} &middot; {{ m.get_semester_display }}</div>
+        </span>
+      </label>
+      {% empty %}
+      <p class="empty-note">No subjects are assigned to this staff member yet. Assign them from a subject's page.</p>
+      {% endfor %}
+    </div>
+
+    {% if can_edit and assigned_mappings %}
+    <div class="form-actions" id="subjectsSaveRow" style="display:none; margin-top:16px;">
+      <button type="button" id="subjectsCancelBtn" class="btn-ghost">Cancel</button>
+      <button type="button" id="subjectsSaveBtn" class="btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Save Changes
+      </button>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    function getCookie(name) {
+      const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? match.pop() : '';
+    }
+
+    // ---------- Staff details: lock-until-edit ----------
+    const detailFieldIds = [
+      'f-first', 'f-last', 'f-email', 'f-mobile',
+      'f-department', 'f-role', 'f-advisor-year',
+      'f-designation', 'f-blood-group', 'f-status', 'f-address'
+    ];
+    const detailInputs = detailFieldIds.map((id) => document.getElementById(id));
+    const detailsEditToggleBtn = document.getElementById('detailsEditToggleBtn');
+    const detailsCancelBtn = document.getElementById('detailsCancelBtn');
+    const detailsSaveRow = document.getElementById('detailsSaveRow');
+    const detailsEditBanner = document.getElementById('detailsEditBanner');
+    const detailsSaveBtn = document.getElementById('detailsSaveBtn');
+    const detailsMsg = document.getElementById('detailsSaveMsg');
+
+    const roleSelect = document.getElementById('f-role');
+    const advisorYearField = document.getElementById('advisorYearField');
+    const advisorYearSelect = document.getElementById('f-advisor-year');
+
+    // Send-password option
+    const emailInput = document.getElementById('f-email');
+    const sendPasswordRow = document.getElementById('sendPasswordRow');
+    const sendPasswordCb = document.getElementById('f-send-password');
+
+    function syncAdvisorYearVisibility() {
+      const isAdvisor = roleSelect.value === 'class_advisor';
+      advisorYearField.style.display = isAdvisor ? 'block' : 'none';
+      if (!isAdvisor) advisorYearSelect.value = '';
+    }
+
+    if (roleSelect) {
+      roleSelect.addEventListener('change', syncAdvisorYearVisibility);
+    }
+
+    let originalDetails = null;
+    function snapshotDetails() {
+      originalDetails = {};
+      detailFieldIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) originalDetails[id] = el.value;
+      });
+    }
+
+    function setDetailsEditing(on) {
+      detailInputs.forEach((el) => { if (el) el.disabled = !on; });
+      if (sendPasswordCb && sendPasswordRow) {
+        sendPasswordCb.disabled = !on;
+        sendPasswordRow.classList.toggle('is-visible', on);
+        if (!on) sendPasswordCb.checked = false;
+      }
+      if (on) syncAdvisorYearVisibility();
+      if (detailsSaveRow) detailsSaveRow.style.display = on ? 'flex' : 'none';
+      if (detailsEditBanner) detailsEditBanner.style.display = on ? 'inline' : 'none';
+      if (detailsEditToggleBtn) detailsEditToggleBtn.style.display = on ? 'none' : 'inline-flex';
+    }
+
+    // Auto-tick "send password" when the email differs from the original;
+    // untick again if the user types the original email back.
+    if (emailInput && sendPasswordCb) {
+      emailInput.addEventListener('input', () => {
+        if (!originalDetails) return;
+        const changed = emailInput.value.trim().toLowerCase() !== (originalDetails['f-email'] || '').trim().toLowerCase();
+        sendPasswordCb.checked = changed;
+      });
+    }
+
+    if (detailsEditToggleBtn) {
+      detailsEditToggleBtn.addEventListener('click', () => { snapshotDetails(); setDetailsEditing(true); });
+    }
+    if (detailsCancelBtn) {
+      detailsCancelBtn.addEventListener('click', () => {
+        if (originalDetails) {
+          detailFieldIds.forEach((id) => {
+            const el = document.getElementById(id);
+            if (el && originalDetails[id] !== undefined) el.value = originalDetails[id];
+          });
+        }
+        advisorYearField.style.display = originalDetails && originalDetails['f-role'] === 'class_advisor' ? 'block' : 'none';
+        setDetailsEditing(false);
+        detailsMsg.textContent = '';
+      });
+    }
+    if (detailsSaveBtn) {
+      detailsSaveBtn.addEventListener('click', async () => {
+        const payload = {
+          first_name: document.getElementById('f-first').value,
+          last_name: document.getElementById('f-last').value,
+          email: document.getElementById('f-email').value.trim(),
+          mobile_number: document.getElementById('f-mobile').value || null,
+          department: document.getElementById('f-department').value || null,
+          staff_role: document.getElementById('f-role').value,
+          advisor_year: document.getElementById('f-advisor-year').value || null,
+          designation: document.getElementById('f-designation').value,
+          blood_group: document.getElementById('f-blood-group').value || null,
+          status: document.getElementById('f-status').value,
+          address: document.getElementById('f-address').value || null,
+          send_password: sendPasswordCb ? sendPasswordCb.checked : false,
+        };
+        detailsSaveBtn.disabled = true;
+        detailsMsg.textContent = payload.send_password ? 'Saving and sending email…' : 'Saving…';
+        try {
+          const res = await fetch("{% url 'update-staff' staff.id %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            detailsMsg.textContent = data.password_sent
+              ? 'Saved. New password sent to ' + data.email + '.'
+              : 'Saved successfully.';
+            setDetailsEditing(false);
+          } else {
+            const firstError = Object.values(data)[0];
+            detailsMsg.textContent = data.detail || (Array.isArray(firstError) ? firstError[0] : 'Could not save — check the fields.');
+            console.error(data);
+          }
+        } catch (e) {
+          detailsMsg.textContent = 'Network error while saving.';
+        } finally {
+          detailsSaveBtn.disabled = false;
+        }
+      });
+    }
+
+    // ---------- Subjects taught: lock-until-edit ----------
+    const subjectsEditToggleBtn = document.getElementById('subjectsEditToggleBtn');
+    const subjectsCancelBtn = document.getElementById('subjectsCancelBtn');
+    const subjectsSaveRow = document.getElementById('subjectsSaveRow');
+    const subjectsEditBanner = document.getElementById('subjectsEditBanner');
+    const subjectsSaveBtn = document.getElementById('subjectsSaveBtn');
+    const subjectsMsg = document.getElementById('subjectsSaveMsg');
+    const subjectCheckboxes = () => Array.from(document.querySelectorAll('#subjectCheckList input[type="checkbox"]'));
+
+    let originalChecked = null;
+    function snapshotSubjects() {
+      originalChecked = subjectCheckboxes().map((cb) => cb.checked);
+    }
+    function setSubjectsEditing(on) {
+      subjectCheckboxes().forEach((cb) => { cb.disabled = !on; });
+      if (subjectsSaveRow) subjectsSaveRow.style.display = on ? 'flex' : 'none';
+      if (subjectsEditBanner) subjectsEditBanner.style.display = on ? 'inline' : 'none';
+      if (subjectsEditToggleBtn) subjectsEditToggleBtn.style.display = on ? 'none' : 'inline-flex';
+    }
+    if (subjectsEditToggleBtn) {
+      subjectsEditToggleBtn.addEventListener('click', () => { snapshotSubjects(); setSubjectsEditing(true); });
+    }
+    if (subjectsCancelBtn) {
+      subjectsCancelBtn.addEventListener('click', () => {
+        if (originalChecked) subjectCheckboxes().forEach((cb, i) => { cb.checked = originalChecked[i]; });
+        setSubjectsEditing(false);
+        subjectsMsg.textContent = '';
+      });
+    }
+    if (subjectsSaveBtn) {
+      subjectsSaveBtn.addEventListener('click', async () => {
+        const mappingIds = subjectCheckboxes().filter((cb) => cb.checked).map((cb) => cb.value);
+        subjectsSaveBtn.disabled = true;
+        subjectsMsg.textContent = 'Saving…';
+        try {
+          const res = await fetch("{% url 'update-staff-subjects' staff.id %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ mapping_ids: mappingIds }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            subjectsMsg.textContent = 'Saved. Reload to refresh the list.';
+            setSubjectsEditing(false);
+          } else {
+            subjectsMsg.textContent = data.detail || 'Could not save.';
+            console.error(data);
+          }
+        } catch (e) {
+          subjectsMsg.textContent = 'Network error while saving.';
+        } finally {
+          subjectsSaveBtn.disabled = false;
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

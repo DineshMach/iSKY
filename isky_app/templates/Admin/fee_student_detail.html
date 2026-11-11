@@ -1,0 +1,192 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Student Fee Detail{% endblock %}
+{% block breadcrumb_label %}Student Fees{% endblock %}
+
+{% block main_content %}
+<style>
+  .fs-head-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 760px) { .fs-head-grid { grid-template-columns: repeat(2, 1fr); } }
+  .fs-stat .label { font-size: 12px; font-weight: 700; color: var(--ink-500); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 6px; }
+  .fs-stat .value { font-size: 20px; font-weight: 700; color: var(--ink-900); }
+  .fs-stat .value.due { color: var(--red); }
+  .fs-stat .value.paid { color: var(--secondary-light); }
+
+  .struct-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .struct-card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: var(--cream);
+  }
+  .struct-card .sn { font-weight: 700; color: var(--ink-900); margin-bottom: 4px; }
+  .struct-card .sm { font-size: 12px; color: var(--ink-500); margin-bottom: 8px; }
+  .struct-card .sa { font-size: 18px; font-weight: 700; color: var(--ink-900); }
+  .struct-items { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12.5px; }
+  .struct-items .row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; color: var(--ink-500); }
+  .struct-items .row b { color: var(--ink-900); }
+
+  .pill.inactive { background: var(--cream); color: var(--ink-500); }
+  .num-cell { font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+  .debug-box { font-family: 'JetBrains Mono', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; color: var(--ink-500); }
+</style>
+
+
+
+<!-- ---------- Heading ---------- -->
+<div class="dash-topbar">
+  <div>
+    <h1>{{ student.first_name }} {{ student.last_name }}</h1>
+    <div class="college-line">
+      {{ student.admission_number|default:"—" }}
+      {% if student.roll_number %}· Roll {{ student.roll_number }}{% endif %}
+      · {{ student.department.name|default:"—" }}{% if student.department.short_name %} ({{ student.department.short_name }}){% endif %}
+      · {{ student.year_display|default:"—" }}
+      {% if student.semester %}· Semester {{ student.semester }}{% endif %}
+      {% if student.section %}· Section {{ student.section }}{% endif %}
+      {% if student.academic_year %}· {{ student.academic_year }}{% endif %}
+    </div>
+  </div>
+  <a href="javascript:history.back()" class="btn-primary">Back</a>
+</div>
+
+<!-- ---------- Summary ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-body">
+    <div class="fs-head-grid">
+      <div class="fs-stat">
+        <div class="label">Total Billed</div>
+        <div class="value">₹{{ summary.total_billed|default:0 }}</div>
+      </div>
+      <div class="fs-stat">
+        <div class="label">Total Paid</div>
+        <div class="value paid">₹{{ summary.total_paid|default:0 }}</div>
+      </div>
+      <div class="fs-stat">
+        <div class="label">Balance Due</div>
+        <div class="value due">₹{{ summary.total_balance|default:0 }}</div>
+      </div>
+      <div class="fs-stat">
+        <div class="label">Overall Status</div>
+        <div class="value" style="text-transform:capitalize;">{{ summary.overall_status|default:"—" }}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- Fee Structures ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>Applicable Fee Structures</h2>
+    <span class="field-hint" style="margin:0;">{{ structures|length }} structure{{ structures|length|pluralize }}</span>
+  </div>
+  <div class="panel-body">
+    <div class="struct-grid">
+      {% for s in structures %}
+      <div class="struct-card">
+        <div class="sn">{% firstof s.name s.department_name "All Departments" %}</div>
+        <div class="sm">
+          {% firstof s.year_display s.year "" %}
+          {% if s.academic_year_name or s.academic_year %}· {% firstof s.academic_year_name s.academic_year %}{% endif %}
+          {% if s.billing_cycle_display or s.billing_cycle %}· {% firstof s.billing_cycle_display s.billing_cycle %}{% endif %}
+        </div>
+        <div class="sa">₹{% firstof s.total_amount s.amount 0 %}</div>
+        {% if s.items %}
+        <div class="struct-items">
+          {% for item in s.items %}
+          <div class="row">
+            <span>{% firstof item.category_name item.category item.name "Item" %}{% if item.is_optional %} (optional){% endif %}</span>
+            <b>₹{{ item.amount|default:0 }}</b>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% empty %}
+      <p class="empty-note">No fee structure applies to this student.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ---------- Concessions ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>Concessions</h2>
+    <span class="field-hint" style="margin:0;">{{ concessions|length }} concession{{ concessions|length|pluralize }}</span>
+  </div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead>
+        <tr><th>Concession</th><th>Category</th><th>Type</th><th>Value</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for c in concessions %}
+        <tr>
+          <td>{% firstof c.name c.title c.concession_name c.reason "—" %}</td>
+          <td>{% firstof c.category_name c.category "All" %}</td>
+          <td>{% firstof c.type_display c.concession_type c.type c.discount_type "—" %}</td>
+          <td class="num-cell">
+            {% if c.percentage %}{{ c.percentage }}%{% else %}₹{% firstof c.amount c.value c.discount_amount 0 %}{% endif %}
+          </td>
+          <td><span class="pill active">Active</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><p class="empty-note">No concessions applied.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ---------- Invoices ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>Invoices</h2>
+    <span class="field-hint" style="margin:0;">{{ invoices|length }} invoice{{ invoices|length|pluralize }}</span>
+  </div>
+  <div class="panel-body table-wrap">
+    <table class="simple-table">
+      <thead>
+        <tr>
+          <th>Invoice No.</th><th>Items</th><th>Academic Year</th><th>Semester</th>
+          <th>Due Date</th><th>Net Amount</th><th>Paid</th><th>Balance</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr>
+          <td><span class="dir-id">{{ inv.invoice_number }}</span></td>
+          <td>{% for item in inv.items %}{{ item.category_name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+          <td>{{ inv.academic_year|default:"—" }}</td>
+          <td>{% if inv.semester %}Sem {{ inv.semester }}{% else %}—{% endif %}</td>
+          <td>{{ inv.due_date|default:"—" }}</td>
+          <td class="num-cell">₹{{ inv.net_amount }}</td>
+          <td class="num-cell">₹{{ inv.amount_paid }}</td>
+          <td class="num-cell">₹{{ inv.balance_due }}</td>
+          <td>
+            {% with st=inv.status|lower %}
+            <span class="pill {% if st == 'paid' %}active{% elif st == 'overdue' or st == 'cancelled' or st == 'failed' %}blocked{% else %}pending{% endif %}">
+              {% firstof inv.status_display inv.status "—" %}
+            </span>
+            {% endwith %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9"><p class="empty-note">No invoices generated for this student yet.</p></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+
+{% endblock %}

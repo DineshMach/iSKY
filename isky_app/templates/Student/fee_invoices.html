@@ -1,0 +1,126 @@
+{% extends "Student/sidebar.html" %}
+
+{% block title %}ISKY ERP · My Fee Invoices{% endblock %}
+{% block breadcrumb_label %}Fee Invoices{% endblock %}
+
+{% block main_content %}
+<style>
+  .stu-hero{
+    background: linear-gradient(150deg, var(--secondary) 0%, var(--primary-dark) 60%, var(--primary) 130%);
+    border-radius: 16px; padding: 26px 28px; color: #fff; margin-bottom: 22px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+  }
+  .stu-hero h1{ font-family:'Fraunces',serif; font-weight:600; font-size:1.5rem; margin:0 0 6px; }
+  .stu-hero p{ margin:0; color: rgba(255,255,255,0.75); font-size: 0.88rem; }
+  .stu-hero .chip{
+    font-family:'JetBrains Mono',monospace; font-size:0.68rem; letter-spacing:0.04em;
+    background: rgba(198,161,91,0.2); border:1px solid rgba(198,161,91,0.4);
+    padding: 6px 12px; border-radius: 8px; color: var(--gold);
+  }
+
+  .stat-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom: 22px; }
+  .stat-card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px 20px; }
+  .stat-card .label{ font-size:0.72rem; font-family:'JetBrains Mono',monospace; color:var(--ink-500); text-transform:uppercase; letter-spacing:0.03em; }
+  .stat-card .value{ font-family:'Fraunces',serif; font-size:1.9rem; font-weight:600; color:var(--primary-dark); margin-top:6px; }
+  .stat-card .value.gold{ color: var(--gold); }
+  .stat-card .value.danger{ color:#c53030; }
+  .stat-card .sub{ font-size:0.78rem; color:var(--ink-500); margin-top:4px; }
+
+  .panel{ background:#fff; border:1px solid var(--line); border-radius:14px; margin-bottom:20px; }
+  .panel-head{ padding:16px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+  .panel-head h2{ font-size:1rem; margin:0; color:var(--primary-dark); }
+  .panel-body{ padding:0; }
+
+  table.stu-table{ width:100%; border-collapse:collapse; font-size:0.87rem; }
+  table.stu-table th{ text-align:left; font-family:'JetBrains Mono',monospace; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-500); padding:12px 20px; border-bottom:1px solid var(--line); }
+  table.stu-table td{ padding:14px 20px; border-bottom:1px solid var(--line); vertical-align: middle; }
+  table.stu-table tbody tr{ cursor:pointer; transition: background .12s ease; }
+  table.stu-table tbody tr:hover{ background: var(--cream); }
+  table.stu-table tbody tr:last-child td{ border-bottom:none; }
+
+  .fee-badge{
+    display:inline-block; padding:4px 10px; border-radius:999px;
+    font-size:0.72rem; font-weight:600; font-family:'JetBrains Mono',monospace; letter-spacing:0.02em;
+  }
+  .fee-badge.pending{ background:#fef3c7; color:#92400e; }
+  .fee-badge.partial{ background:#dbeafe; color:#1d4ed8; }
+  .fee-badge.paid{ background:#dcfce7; color:#15803d; }
+  .fee-badge.overdue{ background:#fee2e2; color:#b91c1c; }
+  .fee-badge.waived{ background:#f1f5f9; color:#64748b; }
+  .fee-badge.cancelled{ background:#f1f5f9; color:#94a3b8; text-decoration:line-through; }
+
+  .invoice-num{ font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--primary-dark); font-size:0.82rem; }
+  .balance-amt{ font-weight:600; }
+  .balance-amt.zero{ color:var(--ink-500); font-weight:500; }
+
+  .empty-note{ color:var(--ink-500); font-size:0.85rem; text-align:center; padding:40px 0; }
+
+  @media (max-width: 900px){
+    .stat-grid{ grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="stu-hero">
+  <div>
+    <h1>My Fee Invoices</h1>
+    <p>{{ student_profile.full_name|default:"—" }} · Year {{ student_profile.academic_year|default:"—" }} · {{ student_profile.admission_number }}</p>
+  </div>
+  <span class="chip">{{ student_profile.admission_number }}</span>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="label">Total Outstanding</div>
+    <div class="value {% if total_due > 0 %}danger{% else %}gold{% endif %}">₹{{ total_due }}</div>
+    <div class="sub">Across all invoices</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Pending / Partial</div>
+    <div class="value">{{ pending_count }}</div>
+    <div class="sub">Invoice(s) awaiting payment</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Overdue</div>
+    <div class="value {% if overdue_count > 0 %}danger{% endif %}">{{ overdue_count }}</div>
+    <div class="sub">Past due date</div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>All Invoices</h2></div>
+  <div class="panel-body">
+    {% if invoices %}
+    <table class="stu-table">
+      <thead>
+        <tr>
+          <th>Invoice No.</th>
+          <th>Academic Year</th>
+          <th>Semester</th>
+          <th>Total</th>
+          <th>Paid</th>
+          <th>Balance</th>
+          <th>Due Date</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr onclick="window.location.href='{% url 'student-fee-invoice-detail-page' inv.id %}';">
+          <td><span class="invoice-num">{{ inv.invoice_number }}</span></td>
+          <td>{{ inv.academic_year }}</td>
+          <td>{{ inv.semester|default:"Full Year" }}</td>
+          <td>₹{{ inv.total_amount }}</td>
+          <td>₹{{ inv.amount_paid }}</td>
+          <td><span class="balance-amt {% if inv.balance_due == 0 %}zero{% endif %}">₹{{ inv.balance_due }}</span></td>
+          <td>{{ inv.due_date }}</td>
+          <td><span class="fee-badge {{ inv.status }}">{{ inv.status_display }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-note">No fee invoices have been generated for you yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

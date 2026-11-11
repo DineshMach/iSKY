@@ -1,0 +1,234 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Fee Structures{% endblock %}
+{% block breadcrumb_label %}Fee Structures{% endblock %}
+
+{% block main_content %}
+<style>
+  .filter-bar {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 18px;
+  }
+
+  .filter-bar form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 16px;
+  }
+
+  .filter-bar .filter-field {
+    flex: 1 1 170px;
+    min-width: 150px;
+  }
+
+  .filter-bar label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-900);
+    margin-bottom: 8px;
+  }
+
+  .filter-bar .filter-control {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--cream) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7078' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+    background-size: 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 34px 11px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--ink-900);
+    outline: none;
+  }
+
+  .filter-bar .filter-control:focus {
+    border-color: var(--secondary-light);
+    box-shadow: 0 0 0 3px rgba(10, 107, 102, .12);
+  }
+
+  .filter-bar .filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .filter-bar .btn-apply {
+    background: var(--secondary-light);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .filter-bar .btn-apply:hover {
+    background: var(--secondary);
+  }
+
+  .filter-bar .btn-clear {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-500);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .filter-bar .btn-clear:hover {
+    color: var(--ink-900);
+  }
+
+  .fs-row {
+    cursor: pointer;
+  }
+
+  .fs-row:hover {
+    background: var(--cream);
+  }
+
+  .fs-total {
+    font-weight: 700;
+    color: var(--ink-900);
+  }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>Fee Structures</h1>
+    <div class="college-line">Department-wise fee structures · grouped by academic year</div>
+  </div>
+  <a href="{% url 'create-fee-structure-page' %}" class="btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+    Create Fee Structure
+  </a>
+</div>
+
+<!-- ---------- Filters ---------- -->
+<div class="filter-bar">
+  <form method="get" action="{% url 'fee-structure-list-page' %}">
+    <div class="filter-field">
+      <label for="f-department">Department</label>
+      <select id="f-department" name="department" class="filter-control">
+        <option value="">All Departments</option>
+        {% for dept in departments %}
+        <option value="{{ dept.id }}" {% if selected_department == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="f-academic-year">Academic Year</label>
+      <select id="f-academic-year" name="academic_year" class="filter-control">
+        <option value="">All Years</option>
+        {% for ay in academic_years %}
+        <option value="{{ ay }}" {% if selected_academic_year == ay|stringformat:"s" %}selected{% endif %}>{{ ay }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="f-year">Year of Study</label>
+      <select id="f-year" name="year" class="filter-control">
+        <option value="">All Years</option>
+        <option value="1" {% if selected_year == "1" %}selected{% endif %}>1st Year</option>
+        <option value="2" {% if selected_year == "2" %}selected{% endif %}>2nd Year</option>
+        <option value="3" {% if selected_year == "3" %}selected{% endif %}>3rd Year</option>
+        <option value="4" {% if selected_year == "4" %}selected{% endif %}>4th Year</option>
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="f-billing-cycle">Billing Cycle</label>
+      <select id="f-billing-cycle" name="billing_cycle" class="filter-control">
+        <option value="">All Cycles</option>
+        <option value="semester" {% if selected_billing_cycle == "semester" %}selected{% endif %}>Semester-wise</option>
+        <option value="year" {% if selected_billing_cycle == "year" %}selected{% endif %}>Year-wise</option>
+      </select>
+    </div>
+
+    <div class="filter-actions">
+      <a href="{% url 'fee-structure-list-page' %}" class="btn-clear">Clear</a>
+      <button type="submit" class="btn-apply">Apply Filters</button>
+    </div>
+  </form>
+</div>
+
+<!-- ---------- Results: Department -> Fee Structures ---------- -->
+{% for group in department_groups %}
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>{{ group.department_name }}</h2>
+    <span class="field-hint" style="margin:0;">{{ group.structures|length }} structure{{ group.structures|length|pluralize }}</span>
+  </div>
+
+  <div class="panel-body">
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead>
+          <tr>
+            <th>Academic Year</th>
+            <th>Year of Study</th>
+            <th>Billing Cycle</th>
+            <th>Items</th>
+            <th>Total Amount</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fs in group.structures %}
+          <tr class="fs-row" data-href="{% url 'fee-structure-detail-page' fs.id %}">
+            <td>{{ fs.academic_year }}</td>
+            <td>{{ fs.year_display }}</td>
+            <td>{{ fs.billing_cycle_display }}</td>
+            <td>{{ fs.item_count }}</td>
+            <td class="fs-total">₹{{ fs.total_amount }}</td>
+            <td><span class="pill {% if fs.is_active %}active{% else %}inactive{% endif %}">{% if fs.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+            <td><a href="{% url 'fee-structure-detail-page' fs.id %}" class="view-all">View Details</a></td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7">
+              <p class="empty-note">No fee structures in this department yet.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% empty %}
+<section class="panel">
+  <div class="panel-body">
+    <p class="empty-note">No fee structures found for the selected filters.</p>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}
+
+{% block tab_js %}
+<script>
+  (function () {
+    document.querySelectorAll('.fs-row').forEach(function (row) {
+      row.addEventListener('click', function (e) {
+        // Let the "View Details" link behave normally
+        if (e.target.closest('a')) return;
+        window.location = row.dataset.href;
+      });
+    });
+  })();
+</script>
+{% endblock %}

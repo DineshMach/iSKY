@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found · ISKY ERP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #493267;
+      --secondary-light: #0a6b66;
+      --secondary: #085551;
+      --ink-900: #1f2328;
+      --ink-500: #6b7078;
+      --line: #e6e1d8;
+      --card: #ffffff;
+      --cream: #f7f4ee;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--cream);
+      color: var(--ink-900);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .error-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      max-width: 460px;
+      width: 100%;
+      padding: 44px 36px;
+      text-align: center;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, .06);
+    }
+    .error-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      background: #f3edf9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+    .error-icon svg { width: 30px; height: 30px; }
+    .error-code {
+      font-family: 'Fraunces', serif;
+      font-size: 56px;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .error-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--ink-900);
+      margin-bottom: 10px;
+    }
+    .error-desc {
+      font-size: 14.5px;
+      color: var(--ink-500);
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+    .error-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary, .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--secondary-light);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--secondary); }
+    .btn-ghost {
+      background: var(--cream);
+      color: var(--ink-900);
+      border: 1.5px solid var(--line);
+    }
+    .btn-ghost:hover { border-color: var(--secondary-light); }
+    .btn-primary svg, .btn-ghost svg { width: 16px; height: 16px; }
+  </style>
+</head>
+<body>
+  <div class="error-card">
+    <div class="error-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v3M11 14h.01"/>
+      </svg>
+    </div>
+    <div class="error-code">404</div>
+    <div class="error-title">Page Not Found</div>
+    <p class="error-desc">
+      The page you're looking for doesn't exist, may have been moved, or the link you followed might be outdated.
+    </p>
+    <div class="error-actions">
+      <a href="/" class="btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
+        Go to Home
+      </a>
+      <a href="javascript:history.back()" class="btn-ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Go Back
+      </a>
+    </div>
+  </div>
+</body>
+</html>

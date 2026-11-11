@@ -1,0 +1,124 @@
+{% extends "Admin/sidebar.html" %}
+
+{% block title %}ISKY ERP · Fee Structure Detail{% endblock %}
+{% block breadcrumb_label %}Fee Structures{% endblock %}
+
+{% block main_content %}
+<style>
+  .fs-head-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 4px;
+  }
+
+  .fs-stat .label { font-size: 12px; font-weight: 700; color: var(--ink-500); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 6px; }
+  .fs-stat .value { font-size: 20px; font-weight: 700; color: var(--ink-900); }
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .cat-card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: var(--cream);
+  }
+  .cat-card .cn { font-weight: 700; color: var(--ink-900); margin-bottom: 4px; }
+  .cat-card .cc { font-size: 12px; color: var(--ink-500); margin-bottom: 8px; }
+  .cat-card .cd { font-size: 13px; color: var(--ink-500); }
+  .cat-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-top: 8px; }
+  .cat-tag.in-structure { background: rgba(10,107,102,.12); color: var(--secondary-light); }
+  .cat-tag.optional { background: rgba(180,120,20,.12); color: #b47814; margin-left: 6px; }
+</style>
+
+<div class="dash-topbar">
+  <div>
+    <h1>{{ structure.department_name }} · {{ structure.year_display }} · {{ structure.academic_year_name }}</h1>
+    <div class="college-line">{{ structure.billing_cycle_display }} · <span class="pill {% if structure.is_active %}active{% else %}inactive{% endif %}">{% if structure.is_active %}Active{% else %}Inactive{% endif %}</span></div>
+  </div>
+  <a href="{% url 'fee-structure-list-page' %}" class="btn-primary">Back to Fee Structures</a>
+</div>
+
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-body">
+    <div class="fs-head-grid">
+      <div class="fs-stat">
+        <div class="label">Department</div>
+        <div class="value">{{ structure.department_name }}</div>
+      </div>
+      <div class="fs-stat">
+        <div class="label">Year / Academic Year</div>
+        <div class="value">{{ structure.year_display }} · {{ structure.academic_year_name }}</div>
+      </div>
+      <div class="fs-stat">
+        <div class="label">Billing Cycle</div>
+        <div class="value">{{ structure.billing_cycle_display }}</div>
+      </div>
+      <div class="fs-stat">
+        <div class="label">Total Amount</div>
+        <div class="value">₹{{ structure.total_amount }}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- Fee Structure Items ---------- -->
+<section class="panel" style="margin-bottom:18px;">
+  <div class="panel-head">
+    <h2>Fee Items in this Structure</h2>
+    <span class="field-hint" style="margin:0;">{{ structure.items|length }} item{{ structure.items|length|pluralize }}</span>
+  </div>
+  <div class="panel-body">
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead>
+          <tr><th>Category</th><th>Code</th><th>Semester</th><th>Amount</th><th>Optional</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for item in structure.items %}
+          <tr>
+            <td>{{ item.category_name }}</td>
+            <td><span class="dir-id">{{ item.category_code }}</span></td>
+            <td>{{ item.semester_display|default:"Every semester" }}</td>
+            <td>₹{{ item.amount }}</td>
+            <td>{% if item.is_optional %}Yes{% else %}No{% endif %}</td>
+            <td><span class="pill {% if item.is_active %}active{% else %}inactive{% endif %}">{% if item.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6"><p class="empty-note">No items added to this fee structure yet.</p></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- All Fee Categories for this college ---------- -->
+<section class="panel">
+  <div class="panel-head">
+    <h2>All Fee Categories</h2>
+    <span class="field-hint" style="margin:0;">{{ fee_categories|length }} categor{{ fee_categories|length|pluralize:"y,ies" }} · {{ missing_categories|length }} not yet added here</span>
+  </div>
+  <div class="panel-body">
+    <div class="cat-grid">
+      {% for cat in fee_categories %}
+      <div class="cat-card">
+        <div class="cn">{{ cat.name }}</div>
+        <div class="cc">{{ cat.code }}</div>
+        <div class="cd">{{ cat.description|default:"—" }}</div>
+        {% if cat in missing_categories %}
+          <span class="cat-tag" style="background:rgba(180,60,60,.1); color:#b43c3c;">Not in this structure</span>
+        {% else %}
+          <span class="cat-tag in-structure">In this structure</span>
+        {% endif %}
+        {% if cat.is_optional %}<span class="cat-tag optional">Optional</span>{% endif %}
+      </div>
+      {% empty %}
+      <p class="empty-note">No fee categories defined for this college yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}
